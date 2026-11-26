@@ -1,8 +1,8 @@
 # NEON RUSH — Sunset Run
 
-[![make.fun](https://img.shields.io/badge/make.fun-bounty-ff2d78?style=flat-square)](https://make.fun/bounty/best-flight-game-20261126-0057)
-[![prize](https://img.shields.io/badge/prize-%24500-00e5ff?style=flat-square)](https://make.fun/bounty/best-flight-game-20261126-0057)
-[![deadline](https://img.shields.io/badge/deadline-28%20Nov%202026-orange?style=flat-square)](https://make.fun/bounty/best-flight-game-20261126-0057)
+[![make.fun · best-flight-game-20261126-0057](https://make.fun/badge/best-flight-game-20261126-0057.svg)](https://make.fun/bounty/best-flight-game-20261126-0057?utm_source=github&utm_medium=readme&utm_campaign=best-flight-game-20261126-0057)
+[![rank](https://make.fun/badge/best-flight-game-20261126-0057/KembangPasir-dot/neon-rush/rank.svg)](https://make.fun/bounty/best-flight-game-20261126-0057/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=best-flight-game-20261126-0057)
+[![reward](https://make.fun/badge/best-flight-game-20261126-0057/KembangPasir-dot/neon-rush/reward.svg)](https://make.fun/bounty/best-flight-game-20261126-0057?utm_source=github&utm_medium=readme&utm_campaign=best-flight-game-20261126-0057)
 
 **NEON RUSH** is a synthwave arcade flight game for the make.fun bounty
 ["Make the best flight game"](https://make.fun/bounty/best-flight-game-20261126-0057).
