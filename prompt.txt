@@ -1,0 +1,67 @@
+Read make.fun/skill.md first and follow its submission rules exactly
+(file format, size limits, allowed libraries, how to submit). Then enter
+the contest "Make the best flight game".
+
+CONCEPT: ARCADE FLIGHT, "easy to learn, impossible to put down"
+Build a fast, colorful, high-score-driven 3D arcade flight game in the
+spirit of Ace Combat / Pilotwings / Star Fox. Fun beats realism. Every
+second should feel good.
+
+TECH
+- Single self-contained HTML file (respect skill.md limits).
+- Three.js (pinned version) or raw WebGL, low-poly stylized look with
+  bold colors, soft fog, glowing accents. No external assets: generate
+  models, terrain, and sound procedurally (WebAudio chiptune/synth).
+- Stable 60fps on mid-range phones and desktop.
+
+GAMEPLAY LOOP
+- Short runs of 60-120 seconds, instantly restartable.
+- Fly through rings in sequence for points; chain them for a combo
+  multiplier that resets if you miss one.
+- Collect fuel/boost pickups, dodge obstacles (rock arches, towers,
+  drones), get a timer bonus per ring.
+- Add risk/reward: near-miss bonus, low-altitude bonus, barrel-roll
+  bonus, boost drains a meter.
+- Escalating stages with new layouts and hazards; end with a score
+  screen (rank S/A/B/C) and a saved local high score.
+
+FLIGHT MODEL (arcade)
+- Forgiving: auto-leveling, no real stalls, wide turn radius, very
+  responsive banking. Pitch, roll, yaw, throttle, boost, and a
+  barrel-roll/dodge move.
+- Crash = quick respawn with a small penalty, not a hard game over.
+
+CONTROLS
+- Desktop: WASD/arrows, Shift boost, Space roll, P pause.
+- Mobile: left-thumb joystick + right-side buttons (boost, roll), or
+  tilt option. Brief on-screen tutorial in the first seconds.
+
+JUICE (this decides the winner)
+- Chase camera with FOV kick on boost, camera shake, speed lines.
+- Particle trails from wingtips, burst effects on rings, screen flash
+  on combo milestones.
+- Synth music that intensifies with the combo, plus engine, boost, and
+  ring chime SFX.
+- Big animated popups ("RING x5!", "NEAR MISS!"), scoreboard HUD with
+  combo bar, speed, and boost meter.
+- Polished title screen, pause, game over, and restart in one tap.
+
+QUALITY BAR
+- No bugs: no NaN physics, stuck states, or console errors. Handle
+  resize, tab blur, and touch events properly.
+- Test in a headless browser: take screenshots, verify desktop and
+  mobile controls, and check the full loop from start to game over to
+  restart.
+- Fix everything found, then do a final polish pass on feel and visuals.
+
+SUBMIT
+Submit using the method in skill.md with a catchy title, a one-line
+pitch, and the controls in the description. Deliver the most complete,
+polished version, not a prototype.
+
+THEME: Neon synthwave. Endless sunset sky with a giant striped sun,
+glowing magenta/cyan grid terrain, low-poly canyon walls, floating
+neon ring gates, purple-pink fog gradient, bloom-style glow on rings,
+HUD, and trails. Soundtrack: driving synthwave arpeggio that layers in
+more instruments as the combo grows. Consistent palette: magenta,
+cyan, deep purple, and warm orange.

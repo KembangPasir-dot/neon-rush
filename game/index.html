@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>NEON RUSH — Sunset Run</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpolygon points='16,3 27,28 16,22 5,28' fill='%23ff2d78'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --magenta: #ff2d78;
+    --cyan: #00e5ff;
+    --orange: #ff7a3d;
+    --gold: #ffb347;
+    --deep: #120826;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--deep);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: #fff;
+    -webkit-user-select: none; user-select: none;
+  }
+  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; z-index: 30; }
+
+  /* ---------- HUD ---------- */
+  #hud {
+    position: fixed; inset: 0; pointer-events: none; z-index: 10;
+    text-shadow: 0 0 8px rgba(0, 229, 255, 0.65), 0 2px 4px rgba(0, 0, 0, 0.7);
+  }
+  #hud .top-left { position: absolute; top: 14px; left: 16px; }
+  #score { font-size: 42px; font-weight: 800; line-height: 1; letter-spacing: 1px; }
+  #hi { font-size: 13px; letter-spacing: 2px; color: var(--gold); margin-top: 4px; }
+  #comboRow { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  #combo { font-size: 26px; font-weight: 800; color: var(--magenta); min-width: 64px; }
+  #comboTrack { width: 120px; height: 8px; background: rgba(255,255,255,0.15); border-radius: 4px; overflow: hidden; }
+  #comboBar { height: 100%; width: 0%; background: var(--magenta); border-radius: 4px; transition: width 160ms; }
+  .top-right { position: absolute; top: 14px; right: 16px; text-align: right; }
+  #timer { font-size: 40px; font-weight: 800; line-height: 1; }
+  #stage { font-size: 13px; letter-spacing: 3px; color: var(--cyan); margin-top: 4px; }
+  .bottom-left { position: absolute; left: 16px; bottom: 14px; font-size: 15px; line-height: 1.7; letter-spacing: 1px; }
+  .bottom-left b { color: var(--cyan); }
+  .bottom-right { position: absolute; right: 16px; bottom: 14px; text-align: right; }
+  #speed { font-size: 30px; font-weight: 800; }
+  #boostTrack { width: 150px; height: 10px; background: rgba(255,255,255,0.15); border-radius: 5px; overflow: hidden; margin-top: 6px; margin-left: auto; }
+  #boostFill { height: 100%; width: 100%; background: var(--cyan); border-radius: 5px; transition: width 120ms linear; }
+  #boostLabel { font-size: 11px; letter-spacing: 3px; color: var(--cyan); margin-top: 4px; }
+  #alt, #heading { font-size: 14px; letter-spacing: 1px; }
+  #lowAlt {
+    position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%);
+    font-size: 15px; font-weight: 800; letter-spacing: 3px; color: var(--gold);
+    opacity: 0; transition: opacity 200ms;
+    text-shadow: 0 0 12px rgba(255, 179, 71, 0.9);
+  }
+  #popup {
+    position: absolute; left: 50%; top: 30%; transform: translate(-50%, -50%) scale(0.8);
+    font-size: 44px; font-weight: 900; letter-spacing: 2px; opacity: 0;
+    transition: opacity 120ms, transform 120ms;
+    text-shadow: 0 0 18px rgba(255, 45, 120, 0.9), 0 2px 6px rgba(0,0,0,0.8);
+    white-space: nowrap;
+  }
+  #popup.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  #popup.bonus { color: var(--gold); text-shadow: 0 0 18px rgba(255, 179, 71, 0.9), 0 2px 6px rgba(0,0,0,0.8); }
+  #popup.miss { color: #c9b8ff; text-shadow: 0 0 14px rgba(120, 90, 200, 0.9), 0 2px 6px rgba(0,0,0,0.8); }
+  #toast {
+    position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%);
+    font-size: 15px; letter-spacing: 1px; background: rgba(18, 8, 38, 0.75);
+    border: 1px solid rgba(0, 229, 255, 0.5); border-radius: 8px; padding: 8px 16px;
+    opacity: 0; transition: opacity 300ms; white-space: nowrap;
+  }
+
+  /* ---------- Screens ---------- */
+  .screen {
+    position: fixed; inset: 0; z-index: 20; display: flex;
+    flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; background: rgba(11, 6, 32, 0.55);
+    backdrop-filter: blur(2px); padding: 20px; gap: 8px;
+  }
+  .game-title {
+    font-size: min(84px, 12vw); font-weight: 900; letter-spacing: 6px; line-height: 0.95;
+    background: linear-gradient(180deg, #ffe259 10%, #ff7a3d 45%, #ff2d78 80%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 22px rgba(255, 45, 120, 0.65));
+    margin: 0;
+  }
+  .game-sub { font-size: min(20px, 4vw); letter-spacing: 8px; color: var(--cyan); margin: 10px 0 0; }
+  .game-tag { font-size: 16px; color: #e8d8ff; margin: 18px 0 4px; letter-spacing: 1px; }
+  .controls { font-size: 16px; line-height: 1.8; color: #d6ecff; margin: 14px 0; }
+  .controls b { color: #fff; background: rgba(255,255,255,0.14); border-radius: 4px; padding: 1px 7px; }
+  .big-btn {
+    pointer-events: auto; cursor: pointer; margin-top: 14px;
+    font-size: 20px; font-weight: 800; letter-spacing: 3px; color: #120826;
+    background: linear-gradient(90deg, var(--cyan), var(--magenta));
+    border: none; border-radius: 10px; padding: 14px 42px;
+    box-shadow: 0 0 26px rgba(255, 45, 120, 0.55);
+  }
+  .big-btn:active { transform: scale(0.97); }
+  .hint { font-size: 16px; color: #d8ccf5; margin-top: 16px; letter-spacing: 1px; }
+  #titleHi { font-size: 16px; letter-spacing: 2px; color: var(--gold); margin-top: 10px; }
+  #overScore { font-size: 64px; font-weight: 900; line-height: 1; }
+  #overRank {
+    font-size: 92px; font-weight: 900; line-height: 1; margin: 6px 0;
+    text-shadow: 0 0 30px rgba(255, 209, 102, 0.7);
+  }
+  /* POLISH: run-over stats as a spaced 2x2 grid (was one cramped 15px
+     line), inside a subtle dark panel so the text reads on any frame. */
+  #over .panel {
+    background: rgba(8, 4, 24, 0.78); border: 1px solid rgba(0, 229, 255, 0.35);
+    border-radius: 16px; padding: 24px 34px 20px;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.55);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    max-width: 92vw;
+  }
+  #overStats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 28px; margin-top: 10px; }
+  .stat { text-align: center; }
+  .stat-v { display: block; font-size: 26px; font-weight: 800; line-height: 1.1; }
+  .stat-l { display: block; font-size: 13px; letter-spacing: 2px; color: var(--cyan); margin-top: 2px; }
+  #overHi { font-size: 18px; font-weight: 800; color: var(--gold); margin-top: 10px; letter-spacing: 2px; }
+  .screen h2 { font-size: 40px; letter-spacing: 4px; margin: 0 0 8px; }
+  #fatal {
+    display: none; position: fixed; left: 12px; right: 12px; top: 12px; z-index: 50;
+    background: #5a1030; color: #fff; padding: 10px 14px; border-radius: 8px; font-size: 14px;
+  }
+
+  /* ---------- Touch controls ---------- */
+  #touchUI { display: none; position: fixed; inset: 0; z-index: 15; pointer-events: none; }
+  .touch-btn {
+    pointer-events: auto; position: absolute; bottom: 86px;
+    width: 76px; height: 76px; border-radius: 50%;
+    border: 2px solid rgba(0, 229, 255, 0.7); background: rgba(0, 229, 255, 0.18);
+    color: #fff; font-weight: 800; font-size: 13px; letter-spacing: 1px;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+  }
+  .touch-btn:active { background: rgba(0, 229, 255, 0.45); }
+  #btnBoost { right: 22px; }
+  #btnRoll { right: 112px; border-color: rgba(255, 45, 120, 0.7); background: rgba(255, 45, 120, 0.18); }
+  #btnRoll:active { background: rgba(255, 45, 120, 0.45); }
+  #joyHint {
+    position: absolute; left: 22px; bottom: 96px; width: 110px; height: 110px;
+    border: 2px dashed rgba(255,255,255,0.35); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; letter-spacing: 2px; color: rgba(255,255,255,0.6);
+  }
+  @media (max-width: 640px) {
+    #score { font-size: 30px; }
+    #timer { font-size: 28px; }
+    #speed { font-size: 22px; }
+    #popup { font-size: 30px; top: 26%; }
+    .bottom-left { display: none; }
+    /* POLISH: the toast was nowrap and overflowed 360px, and at the
+       bottom it sat on the plane. On phones it rides at the top, just
+       under the HUD row; the low-alt banner lifts clear of the
+       joystick zone (its top edge is 206px up from the bottom). */
+    #toast { font-size: 13px; white-space: normal; max-width: 84vw; text-align: center; top: 118px; bottom: auto; padding: 6px 12px; }
+    #lowAlt { bottom: 215px; font-size: 14px; }
+    #over .panel { padding: 20px 22px 16px; }
+    .stat-v { font-size: 22px; }
+  }
+  /* Short screens (landscape phones): the touch buttons sat 4px into the
+     bottom-right HUD block. Lift them so the meter block clears. The
+     start-of-run toast sat on the plane at bottom:120px, so it rides
+     at the top instead (below the HUD row), and the popup drops below
+     it so the two transient banners never stack on the jet. */
+  @media (max-height: 420px) {
+    .touch-btn { bottom: 100px; }
+    #joyHint { bottom: 110px; }
+    #toast { top: 112px; bottom: auto; }
+    #popup { top: 44%; }
+  }
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="NEON RUSH: fly the jet through neon rings"></canvas>
+<div id="flash"></div>
+<div id="fatal" role="alert"></div>
+
+<div id="hud">
+  <div class="top-left">
+    <div id="score">0</div>
+    <div id="hi">BEST 0</div>
+    <div id="comboRow"><span id="combo"></span><span id="comboTrack"><span id="comboBar" style="display:block"></span></span></div>
+  </div>
+  <div class="top-right">
+    <div id="timer">1:30</div>
+    <div id="stage">STAGE 1</div>
+  </div>
+  <div class="bottom-left">
+    <div><b>ALT</b> <span id="alt">60 m</span></div>
+    <div><b>HDG</b> <span id="heading">000° N</span></div>
+  </div>
+  <div class="bottom-right">
+    <div id="speed">0 kn</div>
+    <div id="boostTrack"><div id="boostFill"></div></div>
+    <div id="boostLabel">BOOST — SHIFT</div>
+  </div>
+  <div id="lowAlt">▼ LOW ALTITUDE +10/s ▼</div>
+  <div id="popup"></div>
+  <div id="toast"></div>
+</div>
+
+<div id="touchUI">
+  <div id="joyHint">DRAG<br>STEER</div>
+  <button id="btnRoll" class="touch-btn" type="button">ROLL</button>
+  <button id="btnBoost" class="touch-btn" type="button">BOOST</button>
+</div>
+
+<div id="title" class="screen">
+  <h1 class="game-title">NEON RUSH</h1>
+  <p class="game-sub">— SUNSET RUN —</p>
+  <p class="game-tag">Outrun the sunset. Thread the rings. Chase the score.</p>
+  <p class="controls">
+    <b>WASD</b> / <b>←↑↓→</b> steer &nbsp;·&nbsp; <b>SHIFT</b> boost &nbsp;·&nbsp; <b>SPACE</b> barrel roll<br>
+    <b>P</b> pause &nbsp;·&nbsp; <b>R</b> restart &nbsp;·&nbsp; mouse: hold to steer
+  </p>
+  <button class="big-btn" type="button" onclick="window.dispatchEvent(new KeyboardEvent('keydown',{code:'Enter'}))">▶ &nbsp;FLY</button>
+  <div id="titleHi">BEST 0</div>
+  <p class="hint">90s · rings add +2s · combos multiply · crash −5s</p>
+</div>
+
+<div id="pause" class="screen" style="display:none">
+  <h2>PAUSED</h2>
+  <p class="controls">Press <b>P</b> or tap anywhere to resume · <b>R</b> to restart</p>
+  <button class="big-btn" type="button" onclick="window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyP'}))">RESUME</button>
+</div>
+
+<div id="over" class="screen" style="display:none">
+  <div class="panel">
+    <h2>RUN OVER</h2>
+    <div id="overScore">0</div>
+    <div id="overRank">C</div>
+    <div id="overStats">
+      <div class="stat"><span class="stat-v" id="statRings">0</span><span class="stat-l">RINGS</span></div>
+      <div class="stat"><span class="stat-v" id="statCombo">x0</span><span class="stat-l">BEST COMBO</span></div>
+      <div class="stat"><span class="stat-v" id="statNear">0</span><span class="stat-l">NEAR MISS</span></div>
+      <div class="stat"><span class="stat-v" id="statSpeed">0 kn</span><span class="stat-l">TOP SPEED</span></div>
+    </div>
+    <div id="overHi"></div>
+    <button class="big-btn" type="button" onclick="window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyR'}))">↻ &nbsp;FLY AGAIN</button>
+    <p class="hint">Press R or tap the button — instant restart</p>
+  </div>
+</div>
+
+<script src="./vendor/three.min.js"></script>
+<script src="./src/util.js"></script>
+<script src="./src/audio.js"></script>
+<script src="./src/input.js"></script>
+<script src="./src/world.js"></script>
+<script src="./src/plane.js"></script>
+<script src="./src/effects.js"></script>
+<script src="./src/hud.js"></script>
+<script src="./src/main.js"></script>
+</body>
+</html>
