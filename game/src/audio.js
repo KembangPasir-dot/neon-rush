@@ -78,6 +78,11 @@
     if (this.master) this.master.gain.value = this.muted ? 0 : 0.9;
   };
 
+  AudioEngine.prototype.toggleMuted = function () {
+    this.setMuted(!this.muted);
+    return this.muted;
+  };
+
   // Call every frame: schedules the arpeggio ahead of time.
   AudioEngine.prototype.update = function (speedNorm, boosting) {
     if (!this.ctx || this.muted) return;
@@ -201,6 +206,18 @@
     this._tone(base * 1.5, 0.28, 'sine', 0.4, 0.07);
   };
 
+  AudioEngine.prototype.miss = function () {
+    // Soft descending blip: the combo is gone, but it is not a punishment.
+    this._tone(320, 0.16, 'sine', 0.14);
+    this._tone(233, 0.22, 'sine', 0.1, 0.06);
+  };
+
+  AudioEngine.prototype.rush = function () {
+    // Quick rising fanfare for the RUSH power-up.
+    this._tone(523, 0.12, 'triangle', 0.35);
+    this._tone(659, 0.12, 'triangle', 0.35, 0.07);
+    this._tone(784, 0.22, 'triangle', 0.35, 0.14);
+  };
   AudioEngine.prototype.pickup = function () {
     this._tone(880, 0.12, 'triangle', 0.4);
     this._tone(1318, 0.2, 'triangle', 0.3, 0.06);
@@ -222,6 +239,26 @@
   AudioEngine.prototype.crash = function () {
     this._noise(0.5, 0.6, 500);
     this._tone(70, 0.4, 'sine', 0.6);
+  };
+
+  AudioEngine.prototype.stall = function () {
+    // Low two-tone warning while the jet is stalling (throttled by the
+    // caller to about once every 0.6s).
+    this._tone(220, 0.09, 'square', 0.12);
+    this._tone(180, 0.09, 'square', 0.12, 0.12);
+  };
+
+  AudioEngine.prototype.land = function () {
+    // Touchdown chime: a rising triad for a completed mission.
+    this._tone(523, 0.15, 'triangle', 0.4);
+    this._tone(784, 0.2, 'triangle', 0.4, 0.1);
+    this._tone(1046, 0.3, 'triangle', 0.35, 0.2);
+  };
+
+  AudioEngine.prototype.approach = function () {
+    // Two-note cue when the final approach opens.
+    this._tone(660, 0.12, 'triangle', 0.35);
+    this._tone(880, 0.18, 'triangle', 0.35, 0.1);
   };
 
   AudioEngine.prototype.click = function () {

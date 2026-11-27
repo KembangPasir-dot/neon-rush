@@ -112,8 +112,10 @@
     this._pushTrail(this.histR, tips.r);
     this._writeTrail(this.trailL, this.histL);
     this._writeTrail(this.trailR, this.histR);
-    // Speed lines while boosting.
-    var target = boosting ? 0.7 : 0.0;
+    // Speed lines: always a few at speed, a storm while boosting. They
+    // hug the screen edges (x biased away from centre) so the middle
+    // stays readable.
+    var target = boosting ? 0.75 : 0.1 + speedNorm * 0.4;
     var mat = this.speedLines.material;
     mat.opacity += (target - mat.opacity) * Math.min(1, dt * 6);
     if (mat.opacity > 0.02) {
@@ -121,7 +123,9 @@
       for (i = 0; i < this.sMax; i++) {
         var s = this.sData[i];
         if (s.z > pz + 12 || s.len <= 0) {
-          s.x = plane.pos.x + (Math.random() - 0.5) * 90;
+          // Bias spawn x toward the edges: |x| 18..45 more often than centre.
+          var side = Math.random() < 0.5 ? -1 : 1;
+          s.x = plane.pos.x + side * (18 + Math.random() * 30);
           s.y = 4 + Math.random() * 52;
           s.z = pz - 60 - Math.random() * 90;
           s.len = 5 + Math.random() * 9;
@@ -136,9 +140,10 @@
       }
       this.sGeo.attributes.position.needsUpdate = true;
     }
-    // Shake decay.
+    // Shake decay — but boosting keeps a faint constant tremble.
+    if (boosting) this.shakeAmount = Math.max(this.shakeAmount, 0.1);
     if (this.shakeAmount > 0) {
-      this.shakeAmount = Math.max(0, this.shakeAmount - dt * 2.2);
+      this.shakeAmount = Math.max(boosting ? 0.1 : 0, this.shakeAmount - dt * 2.2);
     }
   };
 

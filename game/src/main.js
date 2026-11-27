@@ -8,6 +8,8 @@
 
   var RUN_TIME = 90;
   var BEST_KEY = 'neon-rush-best';
+  var MISSION_RINGS = global.NR.MISSION_RINGS || 8;
+  var APPROACH_FIX = { x: 0, y: 28, z: -500 }; // go-around respawn point
 
   function Game() {
     this.canvas = document.getElementById('c');
@@ -32,6 +34,9 @@
     this.input = new global.NR.Input(this.canvas);
     this.hud = new global.NR.Hud();
     this.hud.wireTouch(this.input);
+    this.hud.wireThrottle(this.input);
+    this.hud.wireMute(this.audio);
+    this.hud.wireHelp();
 
     this.state = 'title';
     this.time = 0;
@@ -45,6 +50,14 @@
     this.topSpeed = 0;
     this.stage = 1;
     this.lowAltAcc = 0;
+    this.rushTimer = 0; // seconds of RUSH power-up left
+    this.timeScale = 1; // crash slow-motion eases back to 1
+    this._slowmoT = 0;
+    this.phase = 'rings'; // 'rings' -> 'approach' (8 rings done) -> 'landed'
+    this.landingGrade = '';
+    this.timeBonus = 0;
+    this._stallBeepT = -1;
+    this.ringsResolved = 0; // rings flown through OR missed: all 8 resolved
     this.best = 0;
     try {
       this.best = parseInt(window.localStorage.getItem(BEST_KEY) || '0', 10) || 0;
@@ -111,17 +124,26 @@
       firstRing.mesh.position.set(0, 22, firstRing.z);
     }
     if (mode === 'start') {
+      // Title: the jet parked on the runway, strip running to the sun —
+      // the first frame is the thumbnail, so it has to read as a flight game.
       this.state = 'title';
+      this.plane.pos.set(0, 1.2, -720);
+      this.plane._applyTransform();
       this.hud.showTitle();
       this.frozen = true; // static composed title view, no autopilot drift
     } else if (mode === 'play' || mode === 'ring') {
       this.state = 'playing';
+      this.phase = 'rings';
       this.score = mode === 'ring' ? 5200 : 2450;
       this.combo = mode === 'ring' ? 8 : 5;
       this.bestCombo = this.combo;
-      this.rings = mode === 'ring' ? 14 : 7;
+      this.rings = mode === 'ring' ? 7 : 3;
+      this.ringsResolved = this.rings;
       this.timer = 62;
-      this.plane.boost = 70;
+      this.input.throttle = 0.7;
+      this.hud.setMission('RINGS ' + this.rings + '/8');
+      this.hud.setHint('Next ring ahead — fly the gate');
+      this.hud.showCockpit(true);
       if (mode === 'ring') {
         // Park the plane just before the next ring for the shot.
         var ring = this.world.nextRing;
@@ -130,26 +152,42 @@
         }
       }
       document.getElementById('title').style.display = 'none';
-      this.hud.toast('WASD / ARROWS steer   •   SHIFT boost   •   SPACE roll', 5000);
-      // Pre-simulate ~1s of autopilot flight so the frame is mid-action
+      this.hud.toast('WASD / ARROWS steer   •   SHIFT/CTRL throttle   •   SPACE roll', 5000);
+      // Pre-simulate a short autopilot flight so the frame is mid-action
       // (ring burst, trails, combo live), then freeze for the screenshot.
-      // Play stops short of the first ring: level approach, ring in frame
-      // but not swallowing the sun.
-      for (var s = 0; s < (mode === 'play' ? 60 : 90); s++) {
+      // Play stops ~30 units short of the first ring: level approach, ring
+      // in frame but not swallowing the sun. Ring stops ~9 short of the
+      // gate so the jet is clearly about to thread it.
+      for (var s = 0; s < (mode === 'play' ? 40 : 25); s++) {
         this._updatePlaying(1 / 60, this._autopilot());
       }
       this.frozen = true;
     } else if (mode === 'end') {
+      // Mission complete: landed on the runway, grade PERFECT.
       this.state = 'over';
-      this.score = 8740;
+      this.phase = 'landed';
+      this.score = 11990;
       this.timer = 0;
+      this.landingGrade = 'PERFECT';
+      this.timeBonus = 1250;
+      this.plane.pos.set(0, 1.2, -800);
+      this.plane._applyTransform();
       this.hud.showOver({
-        score: 8740, rank: 'A', rings: 21, bestCombo: 9,
-        nearMiss: 4, topSpeed: 342, best: 8740, newBest: true,
+        title: 'MISSION COMPLETE', score: 11990, rank: 'PERFECT',
+        grade: 'LANDING: PERFECT  ·  TIME BONUS +1,250',
+        rows: [
+          { v: '8/8', l: 'RINGS' },
+          { v: 'x9', l: 'BEST COMBO' },
+          { v: '+1,250', l: 'TIME BONUS' },
+          { v: '342 kn', l: 'TOP SPEED' },
+        ],
+        best: 11990, newBest: true,
       });
       this.frozen = true;
     } else {
       this.state = 'title';
+      this.plane.pos.set(0, 1.2, -720);
+      this.plane._applyTransform();
       this.hud.showTitle();
     }
     this._syncHud();
@@ -159,17 +197,19 @@
     this.hud.setScore(this.score);
     this.hud.setCombo(this.combo);
     this.hud.setSpeed(this.plane.speed * 3.2);
-    this.hud.setBoost(this.plane.boost);
-    this.hud.setAlt(this.plane.pos.y * 3);
+    this.hud.setThrottle(this.input.throttle * 100);
+    this.hud.setAlt(this.plane.pos.y * 40); // feet
     this.hud.setHeading(util.headingDeg(this.plane.heading));
     this.hud.setTimer(this.timer);
-    this.hud.setStage(this.stage);
+    this.hud.drawTape(util.headingDeg(this.plane.heading));
+    this.hud.drawHorizon(this.plane.bank, this.plane.pitchAngle);
   };
 
   Game.prototype.startRun = function () {
     this.audio.init();
     this.audio.click();
     this.input.mouseSteer = false; // never carry a stale mouse steer into a run
+    this.input.throttle = 0.7;
     this.world.reset((Math.random() * 1e9) | 0, 0);
     this.plane.reset();
     this.score = 0;
@@ -182,6 +222,21 @@
     this.timer = RUN_TIME;
     this.stage = 1;
     this.lowAltAcc = 0;
+    this.rushTimer = 0;
+    this.plane.rush = false;
+    this.timeScale = 1;
+    this._slowmoT = 0;
+    this.phase = 'rings';
+    this.landingGrade = '';
+    this.timeBonus = 0;
+    this._stallBeepT = -1;
+    this.ringsResolved = 0;
+    this.hud.setRush(false, 0);
+    this.hud.setGuide(false, 0, 0, 0);
+    this.hud.setMission('RINGS 0/8');
+    this.hud.setHint('Next ring ahead — fly the gate');
+    this.hud.setStall(false);
+    this.hud.showCockpit(true);
     this.state = 'playing';
     document.getElementById('title').style.display = 'none';
     this.hud.hideOver();
@@ -189,8 +244,8 @@
     // POLISH: on touch the keyboard hints are wrong and the long toast
     // overflowed a 360px screen — keep it short on phones.
     this.hud.toast(this.hud.isTouch()
-      ? 'Fly the rings — chain them for combo!'
-      : 'Fly the rings — chain them for combo!   SHIFT boost   •   SPACE roll', 4600);
+      ? 'Drag to steer — fly 8 rings, then land!'
+      : 'Drag or WASD to steer — SHIFT/CTRL throttle · SPACE roll', 4600);
     this._syncHud();
   };
 
@@ -203,7 +258,7 @@
   Game.prototype._gameOver = function () {
     this.state = 'over';
     var score = Math.round(this.score);
-    var rank = score >= 12000 ? 'S' : score >= 8000 ? 'A' : score >= 4000 ? 'B' : 'C';
+    var rank = score >= 12000 ? 'LEGEND' : score >= 8000 ? 'ACE' : score >= 4000 ? 'PRO' : 'ROOKIE';
     var newBest = score > this.best;
     if (newBest) {
       this.best = score;
@@ -213,31 +268,129 @@
     }
     this.hud.setHi(this.best);
     this.hud.showOver({
-      score: score, rank: rank, rings: this.rings, bestCombo: this.bestCombo,
-      nearMiss: this.nearMiss, topSpeed: this.topSpeed, best: this.best, newBest: newBest,
+      title: 'RUN OVER', score: score, rank: rank, grade: '',
+      rows: [
+        { v: this.rings + '/8', l: 'RINGS' },
+        { v: 'x' + this.bestCombo, l: 'BEST COMBO' },
+        { v: String(this.nearMiss), l: 'NEAR MISS' },
+        { v: Math.round(this.topSpeed) + ' kn', l: 'TOP SPEED' },
+      ],
+      best: this.best, newBest: newBest,
     });
   };
 
-  // Autopilot for the title screen and ?shot= modes: steer at the next ring.
+  // Ring 8 is through: the mission is now the landing. The world stops
+  // spawning rings and beacons the runway; crashes respawn at the fix.
+  Game.prototype._enterApproach = function () {
+    this.phase = 'approach';
+    this.world.enterApproach();
+    this.plane.respawnPoint = new THREE.Vector3(APPROACH_FIX.x, APPROACH_FIX.y, APPROACH_FIX.z);
+    this.hud.setMission('FINAL APPROACH');
+    this.hud.setHint('Final approach — ease her down');
+    this.hud.toast('FINAL APPROACH — land on the runway', 4200);
+    this.audio.approach();
+  };
+
+  // Touchdown on the runway: grade the landing, add the time bonus,
+  // and show MISSION COMPLETE.
+  Game.prototype._landed = function () {
+    var vy = this.plane.vy; // negative = descending
+    var ax = Math.abs(this.plane.pos.x);
+    var spd = this.plane.speed;
+    var grade = (Math.abs(vy) <= 4 && ax <= 4 && spd <= 78) ? 'PERFECT'
+      : (Math.abs(vy) <= 9 && ax <= 7) ? 'GOOD' : 'ROUGH';
+    var gradeBonus = grade === 'PERFECT' ? 2000 : grade === 'GOOD' ? 1200 : 600;
+    var timeBonus = Math.ceil(this.timer) * 50;
+    this.timeBonus = timeBonus;
+    this.landingGrade = grade;
+    this.phase = 'landed';
+    this.score += gradeBonus + timeBonus;
+    var score = Math.round(this.score);
+    var newBest = score > this.best;
+    if (newBest) {
+      this.best = score;
+      try {
+        window.localStorage.setItem(BEST_KEY, String(score));
+      } catch (e) { /* storage unavailable */ }
+    }
+    this.hud.setHi(this.best);
+    this.state = 'over';
+    this.audio.land();
+    this.effects.burst(this.plane.pos, 0xffd166, 60, 20);
+    this.effects.flash('rgba(255,209,102,0.35)', 0.5);
+    this.hud.showOver({
+      title: 'MISSION COMPLETE', score: score, rank: grade,
+      grade: 'LANDING: ' + grade + '  ·  TIME BONUS +' + util.fmtInt(timeBonus),
+      rows: [
+        { v: this.rings + '/8', l: 'RINGS' },
+        { v: 'x' + this.bestCombo, l: 'BEST COMBO' },
+        { v: '+' + util.fmtInt(timeBonus), l: 'TIME BONUS' },
+        { v: Math.round(this.topSpeed) + ' kn', l: 'TOP SPEED' },
+      ],
+      best: this.best, newBest: newBest,
+    });
+  };
+
+  // One crash path for tower hits and ground strikes: combo gone, -5s,
+  // slow-motion, shake, explosion, sound. Respawn is the plane's job
+  // (approach crashes go back to the fix).
+  Game.prototype._doCrash = function (popupText) {
+    if (!this.plane.crash()) return false;
+    this.combo = 0;
+    this.audio.setCombo(0);
+    this.timer = Math.max(0, this.timer - 5);
+    // Brief slow-motion: the world drops to 35% speed for ~0.55s.
+    this._slowmoT = 0.55;
+    this.timeScale = 0.35;
+    this.effects.burst(this.plane.pos, 0xff7a3d, 70, 26);
+    this.effects.burst(this.plane.pos, 0xff2d78, 40, 18);
+    this.effects.shake(1.1);
+    this.effects.flash('rgba(255,45,45,0.4)', 0.6);
+    this.audio.crash();
+    this.hud.popup(popupText, 'miss');
+    return true;
+  };
+
+  // Flew past the runway without landing: back to the fix, no -5s —
+  // the lost time is the penalty.
+  Game.prototype._goAround = function () {
+    this.plane.teleportTo(APPROACH_FIX.x, APPROACH_FIX.y, APPROACH_FIX.z);
+    this.hud.toast('MISSED APPROACH — going around', 2600);
+    this.audio.miss();
+  };
+
+  // Autopilot for the ?shot= modes: steer at the next ring.
   Game.prototype._autopilot = function () {
     var ring = this.world.nextRing;
-    var out = { roll: 0, pitch: 0, boost: false, rollPressed: false, pausePressed: false, restartPressed: false, anyPressed: false };
+    var out = { roll: 0, pitch: 0, throttle: 0.7, boost: false, rollPressed: false, pausePressed: false, restartPressed: false, mutePressed: false, anyPressed: false };
     if (!ring) return out;
     var dx = ring.x - this.plane.pos.x;
     var dy = ring.y - this.plane.pos.y;
     out.roll = util.clamp(dx * 0.03, -1, 1);
     out.pitch = util.clamp(-dy * 0.03, -1, 1);
-    out.boost = Math.abs(dx) > 18;
     return out;
   };
 
   Game.prototype._loop = function (t) {
     requestAnimationFrame(this._loop);
-    var dt = Math.min(0.05, (t - (this._lastT || t)) / 1000 || 0.016);
+    var rawDt = Math.min(0.05, (t - (this._lastT || t)) / 1000 || 0.016);
     this._lastT = t;
-    if (dt <= 0 || Number.isNaN(dt)) dt = 0.016;
+    if (rawDt <= 0 || Number.isNaN(rawDt)) rawDt = 0.016;
+    // Crash slow-motion: the world runs at 35% speed for ~0.55s, then
+    // eases back to full speed. The timer slows too — a real breather.
+    if (this._slowmoT > 0) {
+      this._slowmoT -= rawDt;
+      this.timeScale = 0.35;
+    } else if (this.timeScale < 1) {
+      this.timeScale = Math.min(1, this.timeScale + rawDt * 2.5);
+    }
+    var dt = rawDt * this.timeScale;
     this.time += dt;
-    var input = this.input.poll();
+    var input = this.input.poll(dt);
+    if (input.mutePressed) {
+      this.audio.init();
+      this.hud.setMutedLabel(this.audio.toggleMuted());
+    }
 
     // ?shot= modes freeze after staging: the screenshot shows the staged
     // frame, not whatever the live loop drifted to.
@@ -246,8 +399,8 @@
         if (input.anyPressed || input.restartPressed) {
           this.startRun();
         } else {
-          var ap = this._autopilot();
-          this.plane.update(dt, ap, 1);
+          // Parked on the runway: the world stays alive (sun pulse, ring
+          // spin) behind the title, the jet does not drift away.
           this.world.update(dt, this.plane.pos.z, 1, this.time);
           this.effects.update(dt, this.plane, false, 0.2, this.time);
         }
@@ -273,20 +426,23 @@
     // POLISH: pulled further back (11 -> 14) and higher (3.4 -> 4.8) with
     // the smaller jet, so the next ring stays fully in frame — especially
     // in portrait, where the old framing let the jet cover the gate.
+    // UPGRADE: softer lag (damp 7 -> 5.5) so the camera trails the jet,
+    // and it leans with the bank — speed you can feel.
     var heading = this.plane.heading;
     var backX = Math.sin(heading);
     var backZ = Math.cos(heading);
     // Slight lateral offset: the jet reads in 3/4, not dead behind.
     var rightX = Math.cos(heading);
     var rightZ = -Math.sin(heading);
+    var lean = 2.2 + this.plane.bank * 1.5;
     var target = new THREE.Vector3(
-      this.plane.pos.x + backX * 14 + rightX * 2.2,
+      this.plane.pos.x + backX * 14 + rightX * lean,
       this.plane.pos.y + 4.8,
-      this.plane.pos.z + backZ * 14 + rightZ * 2.2
+      this.plane.pos.z + backZ * 14 + rightZ * lean
     );
-    this._camPos.x = util.damp(this._camPos.x, target.x, 7, dt);
-    this._camPos.y = util.damp(this._camPos.y, target.y, 7, dt);
-    this._camPos.z = util.damp(this._camPos.z, target.z, 7, dt);
+    this._camPos.x = util.damp(this._camPos.x, target.x, 5.5, dt);
+    this._camPos.y = util.damp(this._camPos.y, target.y, 5.5, dt);
+    this._camPos.z = util.damp(this._camPos.z, target.z, 5.5, dt);
     var shake = this.effects.shakeOffset(this.time);
     this.camera.position.set(
       this._camPos.x + shake.x,
@@ -296,20 +452,71 @@
     // On the title screen, aim left of the plane so the jet sits clear of
     // the centred title text and FLY button. Look slightly above the jet
     // (+1.2) so it sits lower in the frame and the rings ahead stay clear.
-    var titleShift = this.state === 'title' ? 10 : 0;
+    // A slow sway keeps the title alive without moving the parked jet.
+    var titleShift = this.state === 'title' ? 10 + Math.sin(this.time * 0.25) * 8 : 0;
     this._lookAt.set(
       this.plane.pos.x - backX * 20 - rightX * titleShift,
       this.plane.pos.y + 1.2,
       this.plane.pos.z - backZ * 20 - rightZ * titleShift
     );
     this.camera.lookAt(this._lookAt);
-    var targetFov = 62 + (this.plane.boosting ? 13 : 0) + this.plane.speedNorm() * 4;
+    // Wider FOV at speed and on boost: the world rushes past.
+    var targetFov = 64 + (this.plane.boosting ? 16 : 0) + this.plane.speedNorm() * 6;
     if (Math.abs(this.camera.fov - targetFov) > 0.05) {
       this.camera.fov = util.damp(this.camera.fov, targetFov, 5, dt);
       this.camera.updateProjectionMatrix();
     }
+    this._updateGuide();
+    this._updateBeam();
     this.audio.update(this.plane.speedNorm(), this.plane.boosting);
     this.renderer.render(this.scene, this.camera);
+  };
+
+  // Guide beam: a line from the jet to the next target — the next ring
+  // while flying the gates, the runway threshold on final approach.
+  // Hidden on title / pause / game-over.
+  Game.prototype._updateBeam = function () {
+    // Frozen ?shot= frames keep the beam: the hero shot shows the guide
+    // line to the next ring. Title / pause / game-over hide it.
+    if (this.state !== 'playing') {
+      this.world.setBeam(null, null, 0, false);
+      return;
+    }
+    if (this.phase === 'approach' || !this.world.nextRing) {
+      this.world.setBeam(
+        this.plane.pos,
+        { x: 0, y: 2, z: this.world.runway.zStart },
+        0xffd166, true
+      );
+    } else {
+      this.world.setBeam(this.plane.pos, this.world.nextRing, 0x00e5ff, true);
+    }
+  };
+
+  // Off-screen ring guide: project the next ring; if it is out of frame,
+  // show a chevron at the screen edge pointing at it.
+  Game.prototype._updateGuide = function () {
+    var ring = this.world.nextRing;
+    if (this.phase === 'approach') {
+      // On final approach the chevron points at the runway threshold.
+      ring = { x: 0, y: 2, z: this.world.runway.zStart, active: true };
+    }
+    if (!ring || !ring.active || this.state !== 'playing' || this.frozen) {
+      this.hud.setGuide(false, 0, 0, 0);
+      return;
+    }
+    var v = new THREE.Vector3(ring.x, ring.y, ring.z).project(this.camera);
+    var off = v.z > 1 || v.x < -1 || v.x > 1 || v.y < -1 || v.y > 1;
+    if (!off) {
+      this.hud.setGuide(false, 0, 0, 0);
+      return;
+    }
+    var cx = util.clamp(v.x, -0.92, 0.92);
+    var cy = util.clamp(v.y, -0.88, 0.88);
+    var px = (cx * 0.5 + 0.5) * window.innerWidth;
+    var py = (-cy * 0.5 + 0.5) * window.innerHeight;
+    var ang = Math.atan2(-(v.y - cy), v.x - cx) * 180 / Math.PI;
+    this.hud.setGuide(true, px, py, ang);
   };
 
   Game.prototype._updatePlaying = function (dt, input) {
@@ -323,7 +530,8 @@
       this._gameOver();
       return;
     }
-    var events = this.plane.update(dt, input, this.stage);
+    var events = this.plane.update(dt, input, this.stage,
+      this.phase === 'approach' ? 0.6 : 4.5);
     if (events.rolled) {
       this.score += 25;
       this.hud.popup('BARREL +25', 'bonus');
@@ -335,18 +543,23 @@
     // Ring crossings.
     var cross = this.world.checkRingCrossing(this.plane.pos);
     if (cross) {
+      this.ringsResolved += 1;
       if (cross.result === 'pass') {
         this.combo += 1;
         this.bestCombo = Math.max(this.bestCombo, this.combo);
         this.rings += 1;
         var gained = 100 * this.combo;
+        if (cross.ring.chain) gained = Math.round(gained * 1.5);
+        if (this.rushTimer > 0) gained *= 2;
         this.score += gained;
         this.timer = Math.min(99, this.timer + 2);
         this.effects.burst(cross.ring.mesh.position, 0x00e5ff, 42, 16);
         this.effects.burst(cross.ring.mesh.position, 0xff2d78, 24, 11);
+        // Every ring flashes the screen briefly — the "ting" you can see.
+        this.effects.flash('rgba(0,229,255,0.16)', 0.3);
         this.audio.ring(this.combo);
         this.audio.setCombo(this.combo);
-        this.hud.popup('RING x' + this.combo + '  +' + gained, 'ring');
+        this.hud.popup('+' + gained + '  ·  x' + this.combo + (cross.ring.chain ? '  CHAIN' : ''), 'ring');
         if (this.combo === 5 || this.combo === 10 || this.combo === 15) {
           this.effects.flash('rgba(255,45,120,0.35)', 0.5);
           this.effects.shake(0.25);
@@ -354,7 +567,17 @@
       } else {
         this.combo = 0;
         this.audio.setCombo(0);
+        this.audio.miss(); // soft blip: combo gone, no harsh penalty
         this.hud.popup('MISS', 'miss');
+      }
+      // All 8 rings resolved (passed or missed) opens the final approach:
+      // a single miss must never brick the mission.
+      if (this.phase === 'rings') {
+        if (this.ringsResolved >= MISSION_RINGS) {
+          this._enterApproach();
+        } else {
+          this.hud.setMission('RINGS ' + this.rings + '/8');
+        }
       }
     }
 
@@ -362,17 +585,7 @@
     var hazard = this.world.checkHazards(this.plane.pos, this.plane.invulnerable > 0);
     if (hazard) {
       if (hazard.type === 'crash') {
-        if (this.plane.crash()) {
-          this.combo = 0;
-          this.audio.setCombo(0);
-          this.timer = Math.max(0, this.timer - 5);
-          this.effects.burst(this.plane.pos, 0xff7a3d, 70, 26);
-          this.effects.burst(this.plane.pos, 0xff2d78, 40, 18);
-          this.effects.shake(1.1);
-          this.effects.flash('rgba(255,45,45,0.4)', 0.6);
-          this.audio.crash();
-          this.hud.popup('CRASH!  -5s', 'miss');
-        }
+        this._doCrash('CRASH!  -5s');
       } else if (hazard.type === 'near') {
         this.nearMiss += 1;
         this.score += 50;
@@ -386,14 +599,65 @@
       }
     }
 
+    // Final approach: the runway is the only safe ground.
+    if (this.phase === 'approach' && this.state === 'playing') {
+      if (this.plane.pos.y <= 1.1) {
+        // Touching the floor: on the strip = touchdown, elsewhere = crash.
+        var rw = this.world.runway;
+        var onStrip = Math.abs(this.plane.pos.x) <= rw.halfWidth + 1
+          && this.plane.pos.z <= rw.zStart + 4
+          && this.plane.pos.z >= rw.zEnd;
+        if (onStrip) {
+          this._landed();
+          return;
+        }
+        if (this._doCrash('GROUND STRIKE!  -5s')) {
+          this.hud.toast('Off the runway — go around', 2600);
+        }
+      } else if (this.plane.pos.z < this.world.runway.zEnd - 10) {
+        // Flew past the runway without landing: back to the fix.
+        this._goAround();
+      }
+    }
+
+    // Stall warning: flashing badge + a low beep about twice a second.
+    var stalling = this.plane.stall;
+    this.hud.setStall(stalling);
+    if (stalling && this.time - this._stallBeepT > 0.6) {
+      this._stallBeepT = this.time;
+      this.audio.stall();
+    }
+
     // Pickups.
     var pick = this.world.checkPickups(this.plane.pos);
     if (pick) {
-      this.plane.boost = Math.min(100, this.plane.boost + 30);
+      this.score += 50;
       this.timer = Math.min(99, this.timer + 1);
       this.effects.burst(pick.mesh.position, 0xffb347, 30, 13);
       this.audio.pickup();
-      this.hud.popup('+BOOST', 'bonus');
+      this.hud.popup('+FUEL  +1s', 'bonus');
+    }
+
+    // RUSH power-up: 5s invincible, double score, +12% speed.
+    var rush = this.world.checkRush(this.plane.pos);
+    if (rush) {
+      this.rushTimer = 5;
+      this.plane.rush = true;
+      this.effects.burst(rush.mesh.position, 0xffd166, 50, 20);
+      this.effects.flash('rgba(255,209,102,0.35)', 0.5);
+      this.audio.rush();
+      this.hud.popup('RUSH!  ×2 SCORE', 'bonus');
+    }
+    if (this.rushTimer > 0) {
+      this.rushTimer -= dt;
+      // Stay invulnerable for the whole rush.
+      this.plane.invulnerable = Math.max(this.plane.invulnerable, 0.15);
+      this.hud.setRush(true, this.rushTimer);
+      if (this.rushTimer <= 0) {
+        this.rushTimer = 0;
+        this.plane.rush = false;
+        this.hud.setRush(false, 0);
+      }
     }
 
     // Low-altitude trickle.
@@ -410,7 +674,7 @@
     // Top speed + boost SFX edge.
     var knots = this.plane.speed * 3.2;
     if (knots > this.topSpeed) this.topSpeed = knots;
-    if (input.boost && this.plane.boosting && !this._wasBoosting) this.audio.boost();
+    if (this.plane.boosting && !this._wasBoosting) this.audio.boost();
     this._wasBoosting = this.plane.boosting;
 
     this._syncHud();

@@ -1,5 +1,6 @@
 // NEON RUSH — the aircraft: low-poly jet built from primitives, plus the
-// forgiving arcade flight model (auto-level, no stalls, barrel roll dodge).
+// arcade flight model with inertia: pitch/roll/yaw, throttle, climb
+// bleeds speed, and a stall when too slow. Barrel roll dodge included.
 (function (global) {
   'use strict';
 
@@ -9,8 +10,8 @@
   var MIN_Y = global.NR.MIN_Y;
   var MAX_Y = global.NR.MAX_Y;
 
-  var BASE_SPEED = 55;
-  var BOOST_MULT = 1.75;
+  var BASE_SPEED = 55; // cruise speed at 70% throttle, stage 1
+  var STALL_SPEED = 32; // below this the jet stalls: weak controls, nose drops
 
   function buildJet() {
     var group = new THREE.Group();
@@ -90,33 +91,43 @@
     scene.add(this.mesh);
     this.pos = new THREE.Vector3(0, 20, 0);
     this.heading = 0; // yaw, radians; 0 = straight -Z
+    this.yawRate = 0; // yaw with inertia: bank feeds it, it feeds heading
     this.pitchAngle = 0;
     this.bank = 0;
     this.speed = BASE_SPEED;
-    this.boost = 100; // meter 0..100
-    this.boosting = false;
+    this.throttle = 0.7; // 0..1, set by Shift/Ctrl or the mobile slider
+    this.boosting = false; // effective throttle > 0.85 (FOV kick, speed lines)
+    this.vy = 0; // vertical speed (units/s, negative = descending)
+    this.stall = false; // speed below STALL_SPEED: weak controls, nose drops
     this.rollAnim = 0; // >0 while barrel-rolling (0..1 progress)
     this.rollCooldown = 0;
     this.invulnerable = 0;
     this.crashed = 0; // >0 while tumbling after a crash
     this.crashSpin = 0;
     this.alive = true;
+    this.rush = false; // RUSH power-up: +12% speed while active
+    this.respawnPoint = null; // set on final approach: crash respawns at the fix
   }
 
   Plane.prototype.reset = function () {
     this.pos.set(0, 20, 0);
     this.heading = 0;
+    this.yawRate = 0;
     this.pitchAngle = 0;
     this.bank = 0;
     this.speed = BASE_SPEED;
-    this.boost = 100;
+    this.throttle = 0.7;
     this.boosting = false;
+    this.vy = 0;
+    this.stall = false;
     this.rollAnim = 0;
     this.rollCooldown = 0;
     this.invulnerable = 2;
     this.crashed = 0;
     this.crashSpin = 0;
     this.alive = true;
+    this.rush = false;
+    this.respawnPoint = null;
     this.blinkUntil = 0;
     this.mesh.visible = true;
     this.mesh.rotation.set(0, 0, 0);
@@ -126,7 +137,9 @@
   };
 
   // Returns events: { rolled: bool } when a barrel roll completes.
-  Plane.prototype.update = function (dt, input, stage) {
+  // floorY: lowest allowed altitude — 4.5 normally, 0.6 on final approach
+  // so the jet can touch down on the runway.
+  Plane.prototype.update = function (dt, input, stage, floorY) {
     var events = { rolled: false };
     if (this.crashed > 0) {
       // Tumble, then respawn.
@@ -141,15 +154,13 @@
     }
     if (this.invulnerable > 0) this.invulnerable -= dt;
     if (this.rollCooldown > 0) this.rollCooldown -= dt;
+    if (floorY == null) floorY = MIN_Y - 0.5;
 
-    // Boost: drains the meter, refills when not boosting.
-    var wantBoost = input.boost && this.boost > 1;
-    this.boosting = wantBoost;
-    if (wantBoost) {
-      this.boost = Math.max(0, this.boost - 34 * dt);
-    } else {
-      this.boost = Math.min(100, this.boost + 13 * dt);
-    }
+    // Throttle: the input owns the stored value (Shift/Ctrl nudge it, the
+    // mobile slider sets it); the BOOST button holds full throttle.
+    if (input.throttle != null) this.throttle = util.clamp(input.throttle, 0, 1);
+    var effThrottle = input.boost ? 1 : this.throttle;
+    this.boosting = effThrottle > 0.85;
 
     // Barrel roll: 0.55s spin, brief invulnerability, +bonus on completion.
     if (input.rollPressed && this.rollCooldown <= 0 && this.rollAnim <= 0) {
@@ -169,21 +180,36 @@
     }
 
     // Steering: bank into turns, pitch with input, auto-level when released.
+    // Stalling weakens the controls and drops the nose.
     var targetBank = util.clamp(input.roll, -1, 1) * 1.05;
     var targetPitch = util.clamp(input.pitch, -1, 1) * 0.55;
+    if (this.stall) {
+      targetBank *= 0.5;
+      targetPitch = 0.22; // nose drops on its own until speed returns
+    }
     this.bank = util.damp(this.bank, targetBank, 6, dt);
     this.pitchAngle = util.damp(this.pitchAngle, targetPitch, 5, dt);
-    this.heading -= this.bank * 0.55 * dt;
+    // Yaw with inertia: the bank feeds a yaw rate, the rate turns the jet.
+    var targetYawRate = this.bank * 0.55;
+    this.yawRate = util.damp(this.yawRate, targetYawRate, 3, dt);
+    this.heading -= this.yawRate * dt;
 
-    var targetSpeed = (BASE_SPEED + (stage - 1) * 7) * (this.boosting ? BOOST_MULT : 1);
+    // Speed: throttle sets it; climbing bleeds speed, diving gains a little.
+    // pitchAngle < 0 = climbing (see the vertical integration below).
+    var climbBleed = util.clamp(1 + this.pitchAngle * 0.45, 0.6, 1.3);
+    var targetSpeed = (30 + effThrottle * 50 + (stage - 1) * 7)
+      * (this.rush ? 1.12 : 1) * climbBleed;
     this.speed = util.damp(this.speed, targetSpeed, 2.5, dt);
+    this.stall = this.speed < STALL_SPEED;
 
     // Integrate: forward along heading, vertical from pitch.
+    var oldY = this.pos.y;
     var forward = new THREE.Vector3(-Math.sin(this.heading), 0, -Math.cos(this.heading));
     this.pos.addScaledVector(forward, this.speed * dt);
     this.pos.y += -Math.sin(this.pitchAngle) * this.speed * 0.55 * dt;
     this.pos.x = util.clamp(this.pos.x, -CORRIDOR_X, CORRIDOR_X);
-    this.pos.y = util.clamp(this.pos.y, MIN_Y - 0.5, MAX_Y);
+    this.pos.y = util.clamp(this.pos.y, floorY, MAX_Y);
+    this.vy = (this.pos.y - oldY) / Math.max(dt, 1e-4);
     if (this.pos.x <= -CORRIDOR_X || this.pos.x >= CORRIDOR_X) {
       this.heading = util.clamp(this.heading, -0.5, 0.5) * 0.9;
     }
@@ -209,13 +235,19 @@
     if (this.crashed > 0 || this.invulnerable > 0) return false;
     this.crashed = 0.9;
     this.crashSpin = 0;
-    this.boost = Math.max(30, this.boost);
     return true;
   };
 
   Plane.prototype._respawn = function () {
-    this.pos.set(0, 22, this.pos.z - 4);
+    // On final approach the crash respawns at the approach fix, not a few
+    // metres back: a go-around, not a teleport to nowhere.
+    if (this.respawnPoint) {
+      this.pos.copy(this.respawnPoint);
+    } else {
+      this.pos.set(0, 22, this.pos.z - 4);
+    }
     this.heading = 0;
+    this.yawRate = 0;
     this.pitchAngle = 0;
     this.bank = 0;
     this.invulnerable = 2.5;
@@ -223,8 +255,23 @@
     this.mesh.rotation.set(0, 0, 0);
   };
 
+  // Instant reposition (missed approach): no tumble, just back to the fix.
+  Plane.prototype.teleportTo = function (x, y, z) {
+    this.pos.set(x, y, z);
+    this.heading = 0;
+    this.yawRate = 0;
+    this.pitchAngle = 0;
+    this.bank = 0;
+    this.crashed = 0;
+    this.invulnerable = 2.5;
+    this.blinkUntil = performance.now() + 800;
+    this.mesh.rotation.set(0, 0, 0);
+    this._applyTransform();
+  };
+
   Plane.prototype.speedNorm = function () {
-    return util.clamp((this.speed - BASE_SPEED) / (BASE_SPEED * BOOST_MULT - BASE_SPEED), 0, 1);
+    // 30 (idle) .. 80 (full throttle) maps to 0..1 for FOV / speed lines.
+    return util.clamp((this.speed - 30) / 50, 0, 1);
   };
 
   Plane.prototype.wingtipWorld = function (out) {

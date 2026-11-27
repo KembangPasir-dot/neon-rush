@@ -191,3 +191,128 @@ UNCHANGED. No commit/push/bundle/check/submit — parent does that after Gas.
   steer, Shift boost, Space barrel roll, P pause, R instant restart;
   mouse hold-to-steer; on mobile, left-thumb joystick + ROLL/BOOST buttons.
   No install, no network — just fly.
+
+## UPGRADE v3 — mission flow + real flight model (27 Nov 2026)
+Upgrade builder subagent (session ed01c42c, parent main agent 7bec23f1).
+Why: the live entry (claim AF-99XSE, submission 01a216eb) landed Round 1 at
+**#5,069 of 6,258, judge 0.388087** — a resubmit before entries close
+28 Nov 08:57 WITA. Two user briefs merged (neither cancels the other):
+the 7-priority upgrade brief (09:10) + the Claude.ai-review flight brief
+(09:29). No commit/push/bundle/check/submit — parent does that after Gas.
+
+### What changed — brief 1 (7 priorities)
+1. **Instant start** — title: name, one-line tagline ("Fly 8 rings. Land
+   the runway. Beat the sunset."), ONE big FLY button, "Drag to steer"
+   hint; full controls moved into a small "?" panel.
+2. **Mobile-first** — drag-anywhere steering (dead zone + easing),
+   auto-boost + large on-screen button, portrait + landscape,
+   keyboard/mouse secondary, `touch-action: none`.
+3. **Speed feel** — edge speed lines intensifying with speed, wider FOV +
+   camera shake on boost, smooth banking, soft-lag chase cam, parallax
+   grid/stars/pulsing sun.
+4. **Feedback** — ring ting (pitch rises with combo), particle burst,
+   screen flash, "+score" popup, combo pulses at x5/x10/x15, soft miss
+   sound, crash slow-mo + shake + explosion + −5s, synthwave WebAudio
+   music + mute button.
+5. **Readability** — neon-outlined buildings, next ring glows/bigger when
+   close, off-screen guide arrow, large high-contrast HUD.
+6. **Fair difficulty** — easy first 10s (gentle ring line), then speed /
+   spacing / obstacle density rise; bonus ring chains; RUSH power-up
+   (invincible + ×2 score).
+7. **End screen** — score, best via try/catch localStorage, rank
+   Rookie/Ace/Legend, big PLAY AGAIN.
+### What changed — brief 2 (flight feel + mission)
+- **Flight model:** pitch/roll/yaw with smooth inertia; throttle
+  (Shift/Ctrl, on-screen slider on mobile — BOOST button kept);
+  banks into turns; loses speed when climbing; stall warning below
+  32 speed (controls ×0.5, nose drops, STALL badge + beep).
+- **Cockpit HUD (neon):** altitude (ft), speed (kt), heading tape top,
+  small artificial-horizon circle, throttle bar, "RINGS n/8", timer —
+  merged with the large score/combo, small on a phone.
+- **3D depth:** 14 low-poly neon mountains/canyon walls both sides,
+  visible runway (z −680..−1000), glowing ring checkpoints with a guide
+  beam to the next ring (cyan) / runway threshold (gold in approach).
+- **Mission flow:** "Fly 8 rings, then land on the runway." 90s timer is
+  the mission clock; all 8 rings resolved (passed or missed — a missed
+  ring never bricks the mission) opens the final approach; smooth
+  touchdown before the timer ends = MISSION COMPLETE + landing grade
+  (PERFECT |vy|≤4, |x|≤4, speed≤78 / GOOD / ROUGH) + time bonus
+  (ceil(timer)×50) + grade bonus (2000/1200/600); timer expiry ends the
+  run with the score so far + rank title. Crash still −5s + slow-mo.
+  Contextual hints at the bottom ("Next ring ahead", "Final approach,
+  ease her down"). Ground strike outside the runway during approach =
+  crash + respawn at the fix; flying past the runway end = go-around
+  respawn, no −5s.
+- **Title / thumbnail:** jet parked on the runway, camera slow sway;
+  first frame is the thumbnail. Hero gameplay shot shows HUD + ring +
+  scenery in one frame (see below).
+
+### Build layout change
+- `game/index.template.html` + `game/src/*.js` are inlined by the new
+  dev-only `inline-build.mjs` into single-file `game/index.html`
+  (**759,434 bytes**, < 1 MiB cap, 0 `<script src>`, 2 script tags).
+  `main.ts` unchanged and still works (requires `game/vendor/three.min.js`
+  to exist — kept even though index.html inlines it).
+- **inline-build.mjs bug found + fixed:** `String.replace(search, str)`
+  interprets `$` patterns in the replacement; three.min.js contains one
+  `$&`, which re-inserted a copy of the vendor tag inside the inlined
+  code. Fix: both replacements use a function replacer `() => replacement`.
+- Template bug fixed: the `#toast` rule was missing its selector.
+
+### Headless tests — 111/111 PASS, twice in a row (CDP, Chrome 158)
+Script: /tmp/test-neon-v3.mjs (111 checks). Boot, FLY, flight, steer,
+throttle (Shift/Ctrl + slider), boost, roll, pause/resume, blur pause,
+R restart, ring pass (+score, popup, flash), combo x5 + pulse, miss
+resets combo, tower crash (−5s, slow-mo), guide arrow off-screen,
+RUSH star, all 8 rings → approach, ground-strike crash (−5s, respawn at
+fix), go-around past runway end, PERFECT landing (grade + time bonus +
+score 11,990), timer-expiry end (rank title), replay, portrait +
+landscape, zero console errors.
+- **Three test bugs found and fixed (game code was correct throughout):**
+  (a) crash −5s: the test read the timer AFTER the teleport eval, so it
+  read the already-deducted value — verified with /tmp/debug-crash.mjs
+  (timer 89.65 → 84.55 on the crash frame); fix: read the timer BEFORE
+  the teleport. (b) guide arrow: the post-crash flight passes the last
+  rings and flips the mission into approach (no next ring left), and a
+  teleport mid-tumble is overwritten by the respawn — fix: guide test
+  runs right after the first ring pass, camera snapped to the teleport.
+  (c) headless fps is NOT a fixed ~4fps: it varies up to ~37fps, so the
+  plane covers ~120 units/s of wall time and a fixed 800ms wait lets it
+  fly past the ring — fix: wait for a single frame (plane z moves),
+  not wall time.
+- Headless SwiftShader ~4–37 fps (software renderer, varies with load);
+  game dt clamped to 0.05 so game time runs slower than wall time —
+  waits poll game state, never wall-clock.
+
+### Screenshots re-taken (deterministic `?shot=` modes, 1280×720, JPEG q80)
+Script: /tmp/shots-neon.mjs (rewritten — the old one was lost to the VM
+restart). 1-ring.jpg 113,353 B sha 6f7f285c…ffc76; 2-play.jpg 124,702 B
+sha 85e052b5…fe833a; 3-start.jpg 60,045 B sha d77e68f4…6ed9ed6;
+4-end.jpg 75,246 B sha 06004ae6…a4ad94f76 (all ≤256 KiB). Viewed:
+hero 2-play shows HUD + ring + scenery in one frame (score 2,450,
+combo x5, RINGS 3/8, heading tape, horizon, 200 kn, throttle 70%,
+big pink ring + guide beam, sun, neon buildings, speed lines);
+1-ring shows the jet threading the gate (5,200, x8, RINGS 7/8);
+3-start is a clean title (name, tagline, FLY, "Drag to steer", "?");
+4-end is MISSION COMPLETE / PERFECT / 11,990 / PLAY AGAIN.
+
+### Blind judging (2 rounds, one sentence each)
+1. "A synthwave sunset flight game where a jet threads glowing neon rings
+   through a neon canyon city, with a full cockpit HUD showing score,
+   rings, speed, and throttle."
+2. "A neon flight game in which the player flies a jet through eight
+   glowing ring gates and lands on a runway, with speed lines, a striped
+   sun, and a cockpit-style HUD."
+Both rounds read it as a flight game with a landing mission, not just a
+ring game — the brief-2 goal. No change needed.
+
+### Retest — all green on the final build
+- Full v3 suite `/tmp/test-neon-v3.mjs`: **111/111 PASS, twice in a row**
+  (second run confirms the guide/crash fixes are stable, not flaky).
+- `main.ts` runs clean twice to different dirs: **byte-identical**
+  outputs (13 game entries, 4 screenshots, /output 2.4 MB).
+  Kit caps all met (index.html 759,434 B < 1 MiB; screenshots ≤256 KiB).
+- **NOT committed, NOT pushed, NOT bundled, NOT checked, NOT submitted**
+  — parent does that after Udin previews + Gas. Resubmit deadline:
+  28 Nov 2026 08:57 WITA. Do NOT commit `transcripts.tar.gz`
+  (untracked kit-bundle artifact, 716 KB — not part of the repo).
