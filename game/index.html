@@ -30,11 +30,11 @@
     position: fixed; inset: 0; pointer-events: none; z-index: 10;
     text-shadow: 0 0 8px rgba(0, 229, 255, 0.65), 0 2px 4px rgba(0, 0, 0, 0.7);
   }
-  #hud .top-left { position: absolute; top: 14px; left: 16px; }
-  #score { font-size: 42px; font-weight: 800; line-height: 1; letter-spacing: 1px; }
+  #hud .top-left { position: absolute; top: 18px; left: 28px; }
+  #score { font-size: 50px; font-weight: 800; line-height: 1; letter-spacing: 1px; }
   #hi { font-size: 13px; letter-spacing: 2px; color: var(--gold); margin-top: 4px; }
   #comboRow { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-  #combo { font-size: 26px; font-weight: 800; color: var(--magenta); min-width: 64px; display: inline-block; }
+  #combo { font-size: 30px; font-weight: 800; color: var(--magenta); min-width: 64px; display: inline-block; }
   /* Combo milestone pulse: the counter scales up on x5 / x10 / x15. */
   @keyframes comboPulse { 0% { transform: scale(1); } 35% { transform: scale(1.6); } 100% { transform: scale(1); } }
   #combo.pulse { animation: comboPulse 320ms ease-out; color: var(--gold); }
@@ -47,17 +47,17 @@
   }
   #comboTrack { width: 120px; height: 8px; background: rgba(255,255,255,0.15); border-radius: 4px; overflow: hidden; }
   #comboBar { height: 100%; width: 0%; background: var(--magenta); border-radius: 4px; transition: width 160ms; }
-  .top-right { position: absolute; top: 14px; right: 16px; text-align: right; }
-  #timer { font-size: 40px; font-weight: 800; line-height: 1; }
+  .top-right { position: absolute; top: 18px; right: 28px; text-align: right; }
+  #timer { font-size: 48px; font-weight: 800; line-height: 1; }
   #stage { font-size: 13px; letter-spacing: 3px; color: var(--cyan); margin-top: 4px; }
-  .bottom-left { position: absolute; left: 16px; bottom: 14px; font-size: 15px; line-height: 1.7; letter-spacing: 1px; }
+  .bottom-left { position: absolute; left: 28px; bottom: 18px; font-size: 17px; line-height: 1.7; letter-spacing: 1px; }
   .bottom-left b { color: var(--cyan); }
-  .bottom-right { position: absolute; right: 16px; bottom: 14px; text-align: right; }
-  #speed { font-size: 30px; font-weight: 800; }
+  .bottom-right { position: absolute; right: 28px; bottom: 18px; text-align: right; }
+  #speed { font-size: 38px; font-weight: 800; }
   #boostTrack { width: 150px; height: 10px; background: rgba(255,255,255,0.15); border-radius: 5px; overflow: hidden; margin-top: 6px; margin-left: auto; }
   #boostFill { height: 100%; width: 100%; background: var(--cyan); border-radius: 5px; transition: width 120ms linear; }
-  #boostLabel { font-size: 11px; letter-spacing: 3px; color: var(--cyan); margin-top: 4px; }
-  #alt, #heading { font-size: 14px; letter-spacing: 1px; }
+  #boostLabel { font-size: 12px; letter-spacing: 3px; color: var(--cyan); margin-top: 4px; }
+  #alt, #heading { font-size: 19px; letter-spacing: 1px; }
   #lowAlt {
     position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%);
     font-size: 15px; font-weight: 800; letter-spacing: 3px; color: var(--gold);
@@ -83,13 +83,13 @@
   }
   #cockpitRow { display: flex; align-items: center; gap: 10px; }
   #horizon {
-    width: 56px; height: 56px; border-radius: 50%;
+    width: 64px; height: 64px; border-radius: 50%;
     border: 2px solid rgba(0, 229, 255, 0.7); background: rgba(18, 8, 38, 0.5);
     box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
   }
-  #tape { width: 220px; height: 28px; }
+  #tape { width: 280px; height: 36px; }
   #missionHint {
-    font-size: 13px; letter-spacing: 2px; color: var(--gold);
+    font-size: 14px; letter-spacing: 2px; color: var(--gold);
     text-shadow: 0 0 10px rgba(255, 179, 71, 0.8); white-space: nowrap;
   }
   #stall {
@@ -107,17 +107,19 @@
   }
   /* Mute toggle: always reachable, above screens and HUD. */
   #muteBtn {
-    position: fixed; top: 84px; right: 16px; z-index: 25;
+    position: fixed; top: 98px; right: 28px; z-index: 25;
     width: 44px; height: 44px; border-radius: 50%; cursor: pointer;
     border: 2px solid rgba(0, 229, 255, 0.6); background: rgba(18, 8, 38, 0.65);
     color: #fff; font-size: 20px; display: flex; align-items: center; justify-content: center;
   }
   #muteBtn:active { background: rgba(0, 229, 255, 0.4); }
-  /* Transient toast / hint banner (bottom-centre on desktop). */
+  /* Transient toast / hint banner. Rides at the TOP, under the cockpit
+     cluster — never on the flight path at the bottom-centre, where it
+     used to cover the runway/ring line. Fades fast (3s) and stays faint. */
   #toast {
-    position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%);
-    font-size: 15px; letter-spacing: 1px; background: rgba(18, 8, 38, 0.75);
-    border: 1px solid rgba(0, 229, 255, 0.5); border-radius: 8px; padding: 8px 16px;
+    position: absolute; left: 50%; top: 126px; bottom: auto; transform: translateX(-50%);
+    font-size: 14px; letter-spacing: 1px; background: rgba(18, 8, 38, 0.55);
+    border: 1px solid rgba(0, 229, 255, 0.35); border-radius: 8px; padding: 8px 16px;
     opacity: 0; transition: opacity 300ms; white-space: nowrap;
   }
 
@@ -232,17 +234,17 @@
   #help .card h3 { margin: 0 0 8px; letter-spacing: 3px; color: var(--cyan); font-size: 18px; }
   #help .card b { color: #fff; background: rgba(255,255,255,0.14); border-radius: 4px; padding: 1px 7px; }
   @media (max-width: 640px) {
-    #score { font-size: 30px; }
-    #timer { font-size: 28px; }
-    #speed { font-size: 22px; }
+    #score { font-size: 36px; }
+    #timer { font-size: 34px; }
+    #speed { font-size: 26px; }
     #popup { font-size: 30px; top: 26%; }
     .bottom-left { display: none; }
     /* Cockpit cluster drops below the score/timer row on phones so it
        never collides with them; the toast rides lower still. */
     #cockpit { top: 66px; }
-    #horizon { width: 44px; height: 44px; }
-    #tape { width: 150px; height: 24px; }
-    #missionHint { font-size: 11px; }
+    #horizon { width: 48px; height: 48px; }
+    #tape { width: 170px; height: 26px; }
+    #missionHint { font-size: 12px; }
     /* POLISH: the toast was nowrap and overflowed 360px, and at the
        bottom it sat on the plane. On phones it rides at the top, just
        under the HUD row; the low-alt banner lifts clear of the
@@ -298,7 +300,7 @@
   <div id="cockpit">
     <div id="cockpitRow">
       <canvas id="horizon" width="112" height="112"></canvas>
-      <canvas id="tape" width="440" height="56"></canvas>
+      <canvas id="tape" width="560" height="72"></canvas>
     </div>
     <div id="missionHint">Next ring ahead — fly the gate</div>
     <div id="stall">⚠ STALL — THROTTLE UP ⚠</div>
@@ -1116,12 +1118,15 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
 
   World.prototype._buildWalls = function (scene) {
     var geo = new THREE.BoxGeometry(1, 1, 1);
-    var matA = new THREE.MeshLambertMaterial({ color: 0x1c0b33, flatShading: true });
-    var matB = new THREE.MeshLambertMaterial({ color: 0x2a0f45, flatShading: true });
+    var matA = new THREE.MeshLambertMaterial({ color: 0x2f1849, flatShading: true });
+    var matB = new THREE.MeshLambertMaterial({ color: 0x3d1f5c, flatShading: true });
     var matEdge = new THREE.MeshBasicMaterial({ color: 0xff2d78 });
     // Bright neon outline so the walls never melt into the dusk sky.
+    // Two concentric outlines: a full-opacity edge plus a slightly larger
+    // additive glow line, so the rim reads thick even at thumbnail size.
     var edgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.02, 1.02, 1.02));
-    var edgeMat = new THREE.LineBasicMaterial({ color: 0xff2d78, transparent: true, opacity: 0.9, fog: false });
+    var edgeMat = new THREE.LineBasicMaterial({ color: 0xff2d78, transparent: true, opacity: 1.0, fog: false });
+    var edgeGlowMat = new THREE.LineBasicMaterial({ color: 0xff2d78, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
     for (var i = 0; i < 44; i++) {
       var group = new THREE.Group();
       var h = 18 + Math.random() * 42;
@@ -1133,6 +1138,9 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
       // Edges as a child of the block: they inherit its scale, so one
       // unit outline fits every wall.
       block.add(new THREE.LineSegments(edgeGeo, edgeMat));
+      var glow = new THREE.LineSegments(edgeGeo, edgeGlowMat);
+      glow.scale.set(1.05, 1.05, 1.05);
+      block.add(glow);
       group.add(block);
       var edge = new THREE.Mesh(new THREE.BoxGeometry(w + 0.4, 0.8, d + 0.4), matEdge);
       edge.position.y = h;
@@ -1147,11 +1155,11 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   // Cones with bright ridge outlines, recycled like the walls.
   World.prototype._buildMountains = function (scene) {
     var geo = new THREE.ConeGeometry(1, 1, 5);
-    var matA = new THREE.MeshLambertMaterial({ color: 0x1a0b31, flatShading: true });
-    var matB = new THREE.MeshLambertMaterial({ color: 0x241040, flatShading: true });
+    var matA = new THREE.MeshLambertMaterial({ color: 0x241338, flatShading: true });
+    var matB = new THREE.MeshLambertMaterial({ color: 0x2f1a4d, flatShading: true });
     var edgeGeo = new THREE.EdgesGeometry(new THREE.ConeGeometry(1.02, 1.02, 5));
-    var edgeMatA = new THREE.LineBasicMaterial({ color: 0xff2d78, transparent: true, opacity: 0.75, fog: false });
-    var edgeMatB = new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.6, fog: false });
+    var edgeMatA = new THREE.LineBasicMaterial({ color: 0xff2d78, transparent: true, opacity: 0.95, fog: false });
+    var edgeMatB = new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.8, fog: false });
     for (var i = 0; i < 14; i++) {
       var group = new THREE.Group();
       var h = 40 + Math.random() * 80;
@@ -1290,11 +1298,13 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     }
     // Obstacles: towers, arches, drones.
     var towerGeo = new THREE.BoxGeometry(6, 1, 6);
-    var towerMat = new THREE.MeshLambertMaterial({ color: 0x241040, flatShading: true });
+    var towerMat = new THREE.MeshLambertMaterial({ color: 0x3a1c60, flatShading: true });
     var towerTopMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
-    // Bright cyan outline on every tower so it never blends into the sky.
+    // Bright cyan outline on every tower so it never blends into the sky,
+    // plus a slightly larger additive glow line for a thicker rim.
     var towerEdgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(6.2, 1.02, 6.2));
-    var towerEdgeMat = new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.95, fog: false });
+    var towerEdgeMat = new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 1.0, fog: false });
+    var towerGlowMat = new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
     var archGeo = new THREE.TorusGeometry(9, 1.1, 10, 32);
     var archMat = new THREE.MeshBasicMaterial({ color: 0xff7a3d });
     var droneGeo = new THREE.IcosahedronGeometry(2.2, 0);
@@ -1307,8 +1317,12 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
         var body = new THREE.Mesh(towerGeo, towerMat);
         body.scale.y = 30;
         body.position.y = 15;
-        // Outline rides on the body and stretches with it.
+        // Outline rides on the body and stretches with it, plus a
+        // slightly larger additive glow line for a thicker neon rim.
         body.add(new THREE.LineSegments(towerEdgeGeo, towerEdgeMat));
+        var towerGlow = new THREE.LineSegments(towerEdgeGeo, towerGlowMat);
+        towerGlow.scale.set(1.04, 1.04, 1.04);
+        body.add(towerGlow);
         var top = new THREE.Mesh(new THREE.BoxGeometry(6.6, 1, 6.6), towerTopMat);
         top.position.y = 30;
         tower.add(body);
@@ -2379,11 +2393,12 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   };
 
   // Heading tape: scrolling degree strip, centre caret, cardinal letters.
-  // Canvas is 440x56 (2x the CSS size) for crisp text.
+  // Canvas is 560x72 (2x the CSS size) for crisp text; digits are drawn
+  // large so the tape stays readable in a small feed thumbnail.
   Hud.prototype.drawTape = function (headingDeg) {
     var g = this._tapeCtx;
     if (!g) return;
-    var W = 440, H = 56;
+    var W = 560, H = 72;
     g.clearRect(0, 0, W, H);
     g.fillStyle = 'rgba(18,8,38,0.55)';
     g.fillRect(0, 0, W, H);
@@ -2398,25 +2413,25 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
       var x = W / 2 + d * pxPerDeg;
       var major = deg % 30 === 0;
       g.beginPath();
-      g.moveTo(x, 8);
-      g.lineTo(x, major ? 24 : 16);
-      g.lineWidth = major ? 3 : 1.5;
+      g.moveTo(x, 10);
+      g.lineTo(x, major ? 30 : 20);
+      g.lineWidth = major ? 3.5 : 2;
       g.strokeStyle = major ? '#ffffff' : 'rgba(0,229,255,0.8)';
       g.stroke();
       if (major) {
         var label = deg === 0 ? 'N' : deg === 90 ? 'E' : deg === 180 ? 'S' : deg === 270 ? 'W'
           : String(deg).padStart(3, '0');
-        g.font = 'bold 20px system-ui, sans-serif';
+        g.font = 'bold 26px system-ui, sans-serif';
         g.fillStyle = '#ffffff';
-        g.fillText(label, x, 48);
+        g.fillText(label, x, 62);
       }
     }
     // Centre caret: the heading you are actually on.
     g.fillStyle = '#ff2d78';
     g.beginPath();
-    g.moveTo(W / 2 - 9, 0);
-    g.lineTo(W / 2 + 9, 0);
-    g.lineTo(W / 2, 10);
+    g.moveTo(W / 2 - 11, 0);
+    g.lineTo(W / 2 + 11, 0);
+    g.lineTo(W / 2, 13);
     g.closePath();
     g.fill();
   };
@@ -2772,14 +2787,37 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
       this.score = mode === 'ring' ? 5200 : 2450;
       this.combo = mode === 'ring' ? 8 : 5;
       this.bestCombo = this.combo;
-      this.rings = mode === 'ring' ? 7 : 3;
+      this.rings = 7;
       this.ringsResolved = this.rings;
       this.timer = 62;
       this.input.throttle = 0.7;
-      this.hud.setMission('RINGS ' + this.rings + '/8');
+      this.hud.setMission('RINGS 7/8');
       this.hud.setHint('Next ring ahead — fly the gate');
       this.hud.showCockpit(true);
-      if (mode === 'ring') {
+      if (mode === 'play') {
+        // HERO: the last ring just before the runway threshold, so one
+        // frame shows ring + HUD + runway together. Park the plane ~60
+        // units short of the ring; the threshold (-680) sits just past
+        // it in the lower frame. Clear the other staged rings so the
+        // beam and the autopilot aim at this one, and stop the world
+        // spawning fresh rings during the short pre-sim.
+        var hero = this.world.nextRing;
+        if (hero) {
+          for (var ri = 0; ri < this.world.rings.length; ri++) {
+            var rr = this.world.rings[ri];
+            if (rr !== hero) { rr.active = false; rr.resolved = true; rr.mesh.visible = false; }
+          }
+          hero.x = 0; hero.y = 20; hero.z = -650;
+          hero.resolved = false; hero.active = true;
+          hero.mesh.visible = true;
+          hero.mesh.position.set(0, 20, -650);
+          this.world.nextRing = hero;
+          this.world.spawnCursor = -2000;
+          this.world.missionSpawned = 8;
+          this.world._markNextRing();
+          this.plane.pos.set(0, 22, -590);
+        }
+      } else {
         // Park the plane just before the next ring for the shot.
         var ring = this.world.nextRing;
         if (ring) {
@@ -2787,13 +2825,14 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
         }
       }
       document.getElementById('title').style.display = 'none';
-      this.hud.toast('WASD / ARROWS steer   •   SHIFT/CTRL throttle   •   SPACE roll', 5000);
+      // No control-hint toast in staged frames: it used to sit across
+      // the flight path at the bottom-centre.
       // Pre-simulate a short autopilot flight so the frame is mid-action
       // (ring burst, trails, combo live), then freeze for the screenshot.
-      // Play stops ~30 units short of the first ring: level approach, ring
-      // in frame but not swallowing the sun. Ring stops ~9 short of the
-      // gate so the jet is clearly about to thread it.
-      for (var s = 0; s < (mode === 'play' ? 40 : 25); s++) {
+      // Play stops ~40 units short of the hero ring: level approach, ring
+      // in frame but not swallowing the sun, runway past it. Ring stops
+      // ~9 short of the gate so the jet is clearly about to thread it.
+      for (var s = 0; s < (mode === 'play' ? 12 : 25); s++) {
         this._updatePlaying(1 / 60, this._autopilot());
       }
       this.frozen = true;
@@ -2877,10 +2916,11 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     this.hud.hideOver();
     this.hud.showPause(false);
     // POLISH: on touch the keyboard hints are wrong and the long toast
-    // overflowed a 360px screen — keep it short on phones.
+    // overflowed a 360px screen — keep it short on phones. The toast
+    // rides at the top now and fades after 3s, never on the flight path.
     this.hud.toast(this.hud.isTouch()
       ? 'Drag to steer — fly 8 rings, then land!'
-      : 'Drag or WASD to steer — SHIFT/CTRL throttle · SPACE roll', 4600);
+      : 'Drag or WASD to steer — SHIFT/CTRL throttle · SPACE roll', 3000);
     this._syncHud();
   };
 

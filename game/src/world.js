@@ -173,12 +173,15 @@
 
   World.prototype._buildWalls = function (scene) {
     var geo = new THREE.BoxGeometry(1, 1, 1);
-    var matA = new THREE.MeshLambertMaterial({ color: 0x1c0b33, flatShading: true });
-    var matB = new THREE.MeshLambertMaterial({ color: 0x2a0f45, flatShading: true });
+    var matA = new THREE.MeshLambertMaterial({ color: 0x2f1849, flatShading: true });
+    var matB = new THREE.MeshLambertMaterial({ color: 0x3d1f5c, flatShading: true });
     var matEdge = new THREE.MeshBasicMaterial({ color: 0xff2d78 });
     // Bright neon outline so the walls never melt into the dusk sky.
+    // Two concentric outlines: a full-opacity edge plus a slightly larger
+    // additive glow line, so the rim reads thick even at thumbnail size.
     var edgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.02, 1.02, 1.02));
-    var edgeMat = new THREE.LineBasicMaterial({ color: 0xff2d78, transparent: true, opacity: 0.9, fog: false });
+    var edgeMat = new THREE.LineBasicMaterial({ color: 0xff2d78, transparent: true, opacity: 1.0, fog: false });
+    var edgeGlowMat = new THREE.LineBasicMaterial({ color: 0xff2d78, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
     for (var i = 0; i < 44; i++) {
       var group = new THREE.Group();
       var h = 18 + Math.random() * 42;
@@ -190,6 +193,9 @@
       // Edges as a child of the block: they inherit its scale, so one
       // unit outline fits every wall.
       block.add(new THREE.LineSegments(edgeGeo, edgeMat));
+      var glow = new THREE.LineSegments(edgeGeo, edgeGlowMat);
+      glow.scale.set(1.05, 1.05, 1.05);
+      block.add(glow);
       group.add(block);
       var edge = new THREE.Mesh(new THREE.BoxGeometry(w + 0.4, 0.8, d + 0.4), matEdge);
       edge.position.y = h;
@@ -204,11 +210,11 @@
   // Cones with bright ridge outlines, recycled like the walls.
   World.prototype._buildMountains = function (scene) {
     var geo = new THREE.ConeGeometry(1, 1, 5);
-    var matA = new THREE.MeshLambertMaterial({ color: 0x1a0b31, flatShading: true });
-    var matB = new THREE.MeshLambertMaterial({ color: 0x241040, flatShading: true });
+    var matA = new THREE.MeshLambertMaterial({ color: 0x241338, flatShading: true });
+    var matB = new THREE.MeshLambertMaterial({ color: 0x2f1a4d, flatShading: true });
     var edgeGeo = new THREE.EdgesGeometry(new THREE.ConeGeometry(1.02, 1.02, 5));
-    var edgeMatA = new THREE.LineBasicMaterial({ color: 0xff2d78, transparent: true, opacity: 0.75, fog: false });
-    var edgeMatB = new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.6, fog: false });
+    var edgeMatA = new THREE.LineBasicMaterial({ color: 0xff2d78, transparent: true, opacity: 0.95, fog: false });
+    var edgeMatB = new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.8, fog: false });
     for (var i = 0; i < 14; i++) {
       var group = new THREE.Group();
       var h = 40 + Math.random() * 80;
@@ -347,11 +353,13 @@
     }
     // Obstacles: towers, arches, drones.
     var towerGeo = new THREE.BoxGeometry(6, 1, 6);
-    var towerMat = new THREE.MeshLambertMaterial({ color: 0x241040, flatShading: true });
+    var towerMat = new THREE.MeshLambertMaterial({ color: 0x3a1c60, flatShading: true });
     var towerTopMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
-    // Bright cyan outline on every tower so it never blends into the sky.
+    // Bright cyan outline on every tower so it never blends into the sky,
+    // plus a slightly larger additive glow line for a thicker rim.
     var towerEdgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(6.2, 1.02, 6.2));
-    var towerEdgeMat = new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.95, fog: false });
+    var towerEdgeMat = new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 1.0, fog: false });
+    var towerGlowMat = new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
     var archGeo = new THREE.TorusGeometry(9, 1.1, 10, 32);
     var archMat = new THREE.MeshBasicMaterial({ color: 0xff7a3d });
     var droneGeo = new THREE.IcosahedronGeometry(2.2, 0);
@@ -364,8 +372,12 @@
         var body = new THREE.Mesh(towerGeo, towerMat);
         body.scale.y = 30;
         body.position.y = 15;
-        // Outline rides on the body and stretches with it.
+        // Outline rides on the body and stretches with it, plus a
+        // slightly larger additive glow line for a thicker neon rim.
         body.add(new THREE.LineSegments(towerEdgeGeo, towerEdgeMat));
+        var towerGlow = new THREE.LineSegments(towerEdgeGeo, towerGlowMat);
+        towerGlow.scale.set(1.04, 1.04, 1.04);
+        body.add(towerGlow);
         var top = new THREE.Mesh(new THREE.BoxGeometry(6.6, 1, 6.6), towerTopMat);
         top.position.y = 30;
         tower.add(body);

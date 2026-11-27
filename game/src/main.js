@@ -137,14 +137,37 @@
       this.score = mode === 'ring' ? 5200 : 2450;
       this.combo = mode === 'ring' ? 8 : 5;
       this.bestCombo = this.combo;
-      this.rings = mode === 'ring' ? 7 : 3;
+      this.rings = 7;
       this.ringsResolved = this.rings;
       this.timer = 62;
       this.input.throttle = 0.7;
-      this.hud.setMission('RINGS ' + this.rings + '/8');
+      this.hud.setMission('RINGS 7/8');
       this.hud.setHint('Next ring ahead — fly the gate');
       this.hud.showCockpit(true);
-      if (mode === 'ring') {
+      if (mode === 'play') {
+        // HERO: the last ring just before the runway threshold, so one
+        // frame shows ring + HUD + runway together. Park the plane ~60
+        // units short of the ring; the threshold (-680) sits just past
+        // it in the lower frame. Clear the other staged rings so the
+        // beam and the autopilot aim at this one, and stop the world
+        // spawning fresh rings during the short pre-sim.
+        var hero = this.world.nextRing;
+        if (hero) {
+          for (var ri = 0; ri < this.world.rings.length; ri++) {
+            var rr = this.world.rings[ri];
+            if (rr !== hero) { rr.active = false; rr.resolved = true; rr.mesh.visible = false; }
+          }
+          hero.x = 0; hero.y = 20; hero.z = -650;
+          hero.resolved = false; hero.active = true;
+          hero.mesh.visible = true;
+          hero.mesh.position.set(0, 20, -650);
+          this.world.nextRing = hero;
+          this.world.spawnCursor = -2000;
+          this.world.missionSpawned = 8;
+          this.world._markNextRing();
+          this.plane.pos.set(0, 22, -590);
+        }
+      } else {
         // Park the plane just before the next ring for the shot.
         var ring = this.world.nextRing;
         if (ring) {
@@ -152,13 +175,14 @@
         }
       }
       document.getElementById('title').style.display = 'none';
-      this.hud.toast('WASD / ARROWS steer   •   SHIFT/CTRL throttle   •   SPACE roll', 5000);
+      // No control-hint toast in staged frames: it used to sit across
+      // the flight path at the bottom-centre.
       // Pre-simulate a short autopilot flight so the frame is mid-action
       // (ring burst, trails, combo live), then freeze for the screenshot.
-      // Play stops ~30 units short of the first ring: level approach, ring
-      // in frame but not swallowing the sun. Ring stops ~9 short of the
-      // gate so the jet is clearly about to thread it.
-      for (var s = 0; s < (mode === 'play' ? 40 : 25); s++) {
+      // Play stops ~40 units short of the hero ring: level approach, ring
+      // in frame but not swallowing the sun, runway past it. Ring stops
+      // ~9 short of the gate so the jet is clearly about to thread it.
+      for (var s = 0; s < (mode === 'play' ? 12 : 25); s++) {
         this._updatePlaying(1 / 60, this._autopilot());
       }
       this.frozen = true;
@@ -242,10 +266,11 @@
     this.hud.hideOver();
     this.hud.showPause(false);
     // POLISH: on touch the keyboard hints are wrong and the long toast
-    // overflowed a 360px screen — keep it short on phones.
+    // overflowed a 360px screen — keep it short on phones. The toast
+    // rides at the top now and fades after 3s, never on the flight path.
     this.hud.toast(this.hud.isTouch()
       ? 'Drag to steer — fly 8 rings, then land!'
-      : 'Drag or WASD to steer — SHIFT/CTRL throttle · SPACE roll', 4600);
+      : 'Drag or WASD to steer — SHIFT/CTRL throttle · SPACE roll', 3000);
     this._syncHud();
   };
 

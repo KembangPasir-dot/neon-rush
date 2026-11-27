@@ -30,11 +30,11 @@
     position: fixed; inset: 0; pointer-events: none; z-index: 10;
     text-shadow: 0 0 8px rgba(0, 229, 255, 0.65), 0 2px 4px rgba(0, 0, 0, 0.7);
   }
-  #hud .top-left { position: absolute; top: 14px; left: 16px; }
-  #score { font-size: 42px; font-weight: 800; line-height: 1; letter-spacing: 1px; }
+  #hud .top-left { position: absolute; top: 18px; left: 28px; }
+  #score { font-size: 50px; font-weight: 800; line-height: 1; letter-spacing: 1px; }
   #hi { font-size: 13px; letter-spacing: 2px; color: var(--gold); margin-top: 4px; }
   #comboRow { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-  #combo { font-size: 26px; font-weight: 800; color: var(--magenta); min-width: 64px; display: inline-block; }
+  #combo { font-size: 30px; font-weight: 800; color: var(--magenta); min-width: 64px; display: inline-block; }
   /* Combo milestone pulse: the counter scales up on x5 / x10 / x15. */
   @keyframes comboPulse { 0% { transform: scale(1); } 35% { transform: scale(1.6); } 100% { transform: scale(1); } }
   #combo.pulse { animation: comboPulse 320ms ease-out; color: var(--gold); }
@@ -47,17 +47,17 @@
   }
   #comboTrack { width: 120px; height: 8px; background: rgba(255,255,255,0.15); border-radius: 4px; overflow: hidden; }
   #comboBar { height: 100%; width: 0%; background: var(--magenta); border-radius: 4px; transition: width 160ms; }
-  .top-right { position: absolute; top: 14px; right: 16px; text-align: right; }
-  #timer { font-size: 40px; font-weight: 800; line-height: 1; }
+  .top-right { position: absolute; top: 18px; right: 28px; text-align: right; }
+  #timer { font-size: 48px; font-weight: 800; line-height: 1; }
   #stage { font-size: 13px; letter-spacing: 3px; color: var(--cyan); margin-top: 4px; }
-  .bottom-left { position: absolute; left: 16px; bottom: 14px; font-size: 15px; line-height: 1.7; letter-spacing: 1px; }
+  .bottom-left { position: absolute; left: 28px; bottom: 18px; font-size: 17px; line-height: 1.7; letter-spacing: 1px; }
   .bottom-left b { color: var(--cyan); }
-  .bottom-right { position: absolute; right: 16px; bottom: 14px; text-align: right; }
-  #speed { font-size: 30px; font-weight: 800; }
+  .bottom-right { position: absolute; right: 28px; bottom: 18px; text-align: right; }
+  #speed { font-size: 38px; font-weight: 800; }
   #boostTrack { width: 150px; height: 10px; background: rgba(255,255,255,0.15); border-radius: 5px; overflow: hidden; margin-top: 6px; margin-left: auto; }
   #boostFill { height: 100%; width: 100%; background: var(--cyan); border-radius: 5px; transition: width 120ms linear; }
-  #boostLabel { font-size: 11px; letter-spacing: 3px; color: var(--cyan); margin-top: 4px; }
-  #alt, #heading { font-size: 14px; letter-spacing: 1px; }
+  #boostLabel { font-size: 12px; letter-spacing: 3px; color: var(--cyan); margin-top: 4px; }
+  #alt, #heading { font-size: 19px; letter-spacing: 1px; }
   #lowAlt {
     position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%);
     font-size: 15px; font-weight: 800; letter-spacing: 3px; color: var(--gold);
@@ -83,13 +83,13 @@
   }
   #cockpitRow { display: flex; align-items: center; gap: 10px; }
   #horizon {
-    width: 56px; height: 56px; border-radius: 50%;
+    width: 64px; height: 64px; border-radius: 50%;
     border: 2px solid rgba(0, 229, 255, 0.7); background: rgba(18, 8, 38, 0.5);
     box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
   }
-  #tape { width: 220px; height: 28px; }
+  #tape { width: 280px; height: 36px; }
   #missionHint {
-    font-size: 13px; letter-spacing: 2px; color: var(--gold);
+    font-size: 14px; letter-spacing: 2px; color: var(--gold);
     text-shadow: 0 0 10px rgba(255, 179, 71, 0.8); white-space: nowrap;
   }
   #stall {
@@ -107,17 +107,19 @@
   }
   /* Mute toggle: always reachable, above screens and HUD. */
   #muteBtn {
-    position: fixed; top: 84px; right: 16px; z-index: 25;
+    position: fixed; top: 98px; right: 28px; z-index: 25;
     width: 44px; height: 44px; border-radius: 50%; cursor: pointer;
     border: 2px solid rgba(0, 229, 255, 0.6); background: rgba(18, 8, 38, 0.65);
     color: #fff; font-size: 20px; display: flex; align-items: center; justify-content: center;
   }
   #muteBtn:active { background: rgba(0, 229, 255, 0.4); }
-  /* Transient toast / hint banner (bottom-centre on desktop). */
+  /* Transient toast / hint banner. Rides at the TOP, under the cockpit
+     cluster — never on the flight path at the bottom-centre, where it
+     used to cover the runway/ring line. Fades fast (3s) and stays faint. */
   #toast {
-    position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%);
-    font-size: 15px; letter-spacing: 1px; background: rgba(18, 8, 38, 0.75);
-    border: 1px solid rgba(0, 229, 255, 0.5); border-radius: 8px; padding: 8px 16px;
+    position: absolute; left: 50%; top: 126px; bottom: auto; transform: translateX(-50%);
+    font-size: 14px; letter-spacing: 1px; background: rgba(18, 8, 38, 0.55);
+    border: 1px solid rgba(0, 229, 255, 0.35); border-radius: 8px; padding: 8px 16px;
     opacity: 0; transition: opacity 300ms; white-space: nowrap;
   }
 
@@ -232,17 +234,17 @@
   #help .card h3 { margin: 0 0 8px; letter-spacing: 3px; color: var(--cyan); font-size: 18px; }
   #help .card b { color: #fff; background: rgba(255,255,255,0.14); border-radius: 4px; padding: 1px 7px; }
   @media (max-width: 640px) {
-    #score { font-size: 30px; }
-    #timer { font-size: 28px; }
-    #speed { font-size: 22px; }
+    #score { font-size: 36px; }
+    #timer { font-size: 34px; }
+    #speed { font-size: 26px; }
     #popup { font-size: 30px; top: 26%; }
     .bottom-left { display: none; }
     /* Cockpit cluster drops below the score/timer row on phones so it
        never collides with them; the toast rides lower still. */
     #cockpit { top: 66px; }
-    #horizon { width: 44px; height: 44px; }
-    #tape { width: 150px; height: 24px; }
-    #missionHint { font-size: 11px; }
+    #horizon { width: 48px; height: 48px; }
+    #tape { width: 170px; height: 26px; }
+    #missionHint { font-size: 12px; }
     /* POLISH: the toast was nowrap and overflowed 360px, and at the
        bottom it sat on the plane. On phones it rides at the top, just
        under the HUD row; the low-alt banner lifts clear of the
@@ -298,7 +300,7 @@
   <div id="cockpit">
     <div id="cockpitRow">
       <canvas id="horizon" width="112" height="112"></canvas>
-      <canvas id="tape" width="440" height="56"></canvas>
+      <canvas id="tape" width="560" height="72"></canvas>
     </div>
     <div id="missionHint">Next ring ahead — fly the gate</div>
     <div id="stall">⚠ STALL — THROTTLE UP ⚠</div>

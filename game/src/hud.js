@@ -118,11 +118,12 @@
   };
 
   // Heading tape: scrolling degree strip, centre caret, cardinal letters.
-  // Canvas is 440x56 (2x the CSS size) for crisp text.
+  // Canvas is 560x72 (2x the CSS size) for crisp text; digits are drawn
+  // large so the tape stays readable in a small feed thumbnail.
   Hud.prototype.drawTape = function (headingDeg) {
     var g = this._tapeCtx;
     if (!g) return;
-    var W = 440, H = 56;
+    var W = 560, H = 72;
     g.clearRect(0, 0, W, H);
     g.fillStyle = 'rgba(18,8,38,0.55)';
     g.fillRect(0, 0, W, H);
@@ -137,25 +138,25 @@
       var x = W / 2 + d * pxPerDeg;
       var major = deg % 30 === 0;
       g.beginPath();
-      g.moveTo(x, 8);
-      g.lineTo(x, major ? 24 : 16);
-      g.lineWidth = major ? 3 : 1.5;
+      g.moveTo(x, 10);
+      g.lineTo(x, major ? 30 : 20);
+      g.lineWidth = major ? 3.5 : 2;
       g.strokeStyle = major ? '#ffffff' : 'rgba(0,229,255,0.8)';
       g.stroke();
       if (major) {
         var label = deg === 0 ? 'N' : deg === 90 ? 'E' : deg === 180 ? 'S' : deg === 270 ? 'W'
           : String(deg).padStart(3, '0');
-        g.font = 'bold 20px system-ui, sans-serif';
+        g.font = 'bold 26px system-ui, sans-serif';
         g.fillStyle = '#ffffff';
-        g.fillText(label, x, 48);
+        g.fillText(label, x, 62);
       }
     }
     // Centre caret: the heading you are actually on.
     g.fillStyle = '#ff2d78';
     g.beginPath();
-    g.moveTo(W / 2 - 9, 0);
-    g.lineTo(W / 2 + 9, 0);
-    g.lineTo(W / 2, 10);
+    g.moveTo(W / 2 - 11, 0);
+    g.lineTo(W / 2 + 11, 0);
+    g.lineTo(W / 2, 13);
     g.closePath();
     g.fill();
   };
