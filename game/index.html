@@ -2815,7 +2815,12 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
           this.world.spawnCursor = -2000;
           this.world.missionSpawned = 8;
           this.world._markNextRing();
-          this.plane.pos.set(0, 22, -590);
+          // HERO RE-STAGE: park ~34 units short of the gate (like the
+          // 'ring' shot) so the 25-step pre-sim ends ~11 short — the ring
+          // then spans ~1/3 of the frame width instead of reading as a
+          // faint circle around the sun. Runway threshold (-680) stays
+          // ~30 past the ring, visible on the horizon through it.
+          this.plane.pos.set(0, 22, -616);
         }
       } else {
         // Park the plane just before the next ring for the shot.
@@ -2829,10 +2834,11 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
       // the flight path at the bottom-centre.
       // Pre-simulate a short autopilot flight so the frame is mid-action
       // (ring burst, trails, combo live), then freeze for the screenshot.
-      // Play stops ~40 units short of the hero ring: level approach, ring
-      // in frame but not swallowing the sun, runway past it. Ring stops
-      // ~9 short of the gate so the jet is clearly about to thread it.
-      for (var s = 0; s < (mode === 'play' ? 12 : 25); s++) {
+      // Both play and ring stop ~11 units short of the gate: level
+      // approach, big ring in frame, jet clearly about to thread it,
+      // runway past it. (Play used to stop ~50 short — the ring read as
+      // a faint circle around the sun at thumbnail size.)
+      for (var s = 0; s < 25; s++) {
         this._updatePlaying(1 / 60, this._autopilot());
       }
       this.frozen = true;
@@ -2864,7 +2870,31 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
       this.plane._applyTransform();
       this.hud.showTitle();
     }
+    // Staged frames only: snap the chase camera to the staged plane.
+    // (Normal play never reaches this — shot.mode is empty there — so
+    // the title fly-in is untouched.)
+    if (this.shot.mode) this._snapCamera();
     this._syncHud();
+  };
+
+  // Staged ?shot= frames only: put the chase camera exactly where the
+  // live loop would keep it (14 behind, 4.8 above, slight 3/4 lean).
+  // Without this the camera starts at (0,24,14) — ~630 units from a hero
+  // staged at z=-616 — and at headless frame rates it never catches up
+  // before the screenshot, so the ring reads tiny and the jet a speck.
+  Game.prototype._snapCamera = function () {
+    var heading = this.plane.heading;
+    var backX = Math.sin(heading);
+    var backZ = Math.cos(heading);
+    var rightX = Math.cos(heading);
+    var rightZ = -Math.sin(heading);
+    var lean = 2.2 + this.plane.bank * 1.5;
+    this._camPos.set(
+      this.plane.pos.x + backX * 14 + rightX * lean,
+      this.plane.pos.y + 4.8,
+      this.plane.pos.z + backZ * 14 + rightZ * lean
+    );
+    this.camera.position.copy(this._camPos);
   };
 
   Game.prototype._syncHud = function () {

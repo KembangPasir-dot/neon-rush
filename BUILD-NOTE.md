@@ -316,3 +316,93 @@ ring game — the brief-2 goal. No change needed.
   — parent does that after Udin previews + Gas. Resubmit deadline:
   28 Nov 2026 08:57 WITA. Do NOT commit `transcripts.tar.gz`
   (untracked kit-bundle artifact, 716 KB — not part of the repo).
+
+## v3 POLISH PASS (27 Nov ~11:00–11:20 WITA) — commit 9a3af2b
+Review of the v3 hero shot (2-play.jpg) found 4 real issues; all verified
+against the actual screenshot before fixing. Polish only — mission flow,
+flight model, cockpit HUD and all v3 features untouched.
+
+### Fix 1 — HUD too small + score/timer clipped at the edges
+`game/index.template.html`: score 42→50px, timer 40→48px, speed 30→38px,
+alt/hdg 14→19px, missionHint 13→14px; HUD safe insets 16→28px (sides),
+top 14→18px; toast/mute repositioned (see Fix 2). `game/src/hud.js`:
+drawTape canvas 440×56→560×72, label font 20→26px, ticks/caret enlarged.
+Phone sizes bumped too (score 34→40px, timer 32→38px, speed 26→32px,
+alt 12→15px). Verified: score rect [28,220] and timer rect [1155,1252]
+at 1280×720 — fully inside the frame, ≥28px from the edges; same at
+portrait 390×844 and landscape 844×390 (≥4px margins).
+
+### Fix 2 — control hint pill covered the flight path
+Toast moved bottom-centre → top:126px under the cockpit, fainter
+(opacity 0.92), 4600→3000ms at startRun; muteBtn moved to top:98px /
+right:28px. Toast REMOVED from all staged `_applyShot` frames, so the
+hero shot has no pill on the runway/ring line. Test confirms: toast at
+top on start, opacity <0.5 after ~3.6s, flight path clear.
+
+### Fix 3 — buildings still dark, neon outlines not prominent enough
+`game/src/world.js`: wall faces 0x1c0b33/0x2a0f45→0x2f1849/0x3d1f5c,
+tower face 0x241040→0x3a1c60, mountain faces lightened; edge opacities
+→1.0 (walls) / 0.95 (towers) / 0.8 (mountains); plus a second additive
+glow LineSegments (opacity 0.4, scale 1.04–1.05) on walls and towers.
+Viewed: pink/cyan edges now read clearly against the purple sky without
+drowning the scene.
+
+### Fix 4 — hero re-staged: ring + HUD + runway in one frame
+`game/src/main.js`: the 'play' shot is now the late-mission hero —
+rings=7, hero ring moved to (0,20,−650), plane parked (0,22,−590),
+other rings deactivated, spawnCursor=−2000, missionSpawned=8, 12-step
+pre-sim. One frame shows the hero gate dead ahead, the full cockpit HUD
+(score 2,450, timer 1:02, RINGS 7/8, tape, horizon, 189 kn), and the
+runway glowing on the horizon past the ring (threshold −680). Viewed at
+full size and reads at thumbnail size. shots.json labels updated to the
+v3 reality (was: stale v1 "combo x9 / rank A / 8,740 points").
+
+### Retest — v3-fix suite `tmp/test-neon-v3fix.mjs` (CDP, Chrome 158)
+**39/39 PASS, zero console errors** (desktop 1280×720 + portrait
+390×844 + landscape 844×390): HUD sizes, no clipping, toast top +
+faded, clock advances, plane flies, A steers, ring pass scores, combo
+shows, tower crash −5s, PERFECT landing → MISSION COMPLETE, R replay,
+timer expiry → RUN OVER, P pause/resume, DPR capped at 2 (emulated
+DSF 3). Two test-assertion fixes, not game bugs: the mission timer
+cannot be asserted to fall monotonically (straight flight threads +1s
+pickups, so it often rises net — verified in a debug run), and the
+timer-expiry test parks the plane at y=80 clear of pickups.
+Screenshots re-shot with `tmp/shots-neon-v3fix.mjs` (deterministic
+?shot= modes, 1280×720, JPEG q80): 1-ring.jpg 124,997 B sha
+52f5b998…f4; 2-play.jpg 109,104 B sha 44ddabb1…da2; 3-start.jpg 60,733 B
+sha 43dd7262…31; 4-end.jpg 74,118 B sha ed1fb40f…45 (all ≤256 KiB).
+`main.ts` run twice: **byte-identical**. Regenerated index.html
+**761,783 B** (< 1 MiB cap), 0 `<script src>`.
+Commit 9a3af2b "NEON RUSH v3 polish: bigger HUD, safe margins, top
+toast, brighter neon", pushed 2b1618f..9a3af2b. Dev scripts live in
+`tmp/` (untracked, kept out of the repo like /tmp before — but durable
+in the workdir now, since /tmp is wiped on restart).
+Pages check: at push +2 min the Pages edge still served the OLD build
+(759,434 B, Last-Modified 02:17:25 UTC, 0 polish markers,
+Cache-Control max-age=600) — re-check after the cache clears.
+Live-link phone-style test (title → tap FLY → starts immediately) and
+the make.fun bundle/check/submit are for the parent after Udin previews
++ Gas. Resubmit deadline: 28 Nov 2026 08:57 WITA. Do NOT commit
+`transcripts.tar.gz` (untracked kit-bundle artifact — not part of the
+repo).
+
+## HERO RE-STAGE (27 Nov ~11:20–11:35 WITA) — parent review of the polish hero
+The 9a3af2b hero (2-play.jpg) regressed: the ring read as a faint ~100px
+circle around the sun and the jet as a speck — "empty purple city with a
+sun" at thumbnail size, worse than the v3 hero. Root cause, found by
+measuring: `_camPos` starts at (0,24,14), ~630 units from a hero staged at
+z=-616, and at headless frame rates the damped chase camera (lambda 5.5)
+never catches up before the screenshot — so the ring sat ~100+ units from
+the camera. Moving the plane closer (z=-590 → -616, 25-step pre-sim,
+ending 9 units short of the gate) alone did NOT fix it.
+Fix (`game/src/main.js` only): new `Game.prototype._snapCamera()` mirrors
+the live loop's chase target (14 behind, 4.8 above, 2.2 lean) and is called
+at the end of `_applyShot`, gated on `this.shot.mode` — staged frames only,
+normal play (including the title fly-in) untouched. Viewed new 2-play.jpg:
+big bright-pink ring ~460px wide (~36% of frame width) with the jet clearly
+threading it, full HUD (2,450 / 1:02 / RINGS 7/8 / x5 / tape / horizon /
+198 kn / throttle 70%), sun behind the ring, runway dashes visible through
+the gate, hint text at top. 1-ring/3-start/4-end re-shot and viewed — all
+as intended. Retest: v3-fix suite **39/39 PASS, zero console errors**
+(desktop + portrait + landscape). `main.ts` twice: **byte-identical**.
+Regenerated index.html **763,245 B** (< 1 MiB cap), 0 `<script src>`.
